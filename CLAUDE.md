@@ -36,7 +36,9 @@
   - 正式網址：https://time-manager-wine.vercel.app （Vercel，推上 GitHub 的 main 就自動部署）
   - GitHub：https://github.com/dannyyao-maker/time-manager
   - Supabase 權限測試 `supabase/tests/rls_test.sql`：10/10 通過
-  - 尚未回報：手機登入、第三個 Google 帳號登入的結果
-- 下一步：階段 2 新增／編輯項目＋類別（見 `階段0規劃.md` 第 5 節）
+  - 手機登入、第三個 Google 帳號被擋：都通過
+- 階段 2 新增／編輯項目＋類別：程式完成並部署（2026-11-06），等我測試
+- 下一步：階段 3 月曆和週曆（見 `階段0規劃.md` 第 5 節）
+- 工作方式：每個階段做完、自己檢查後才停下來給我測試，中途不停（刪除檔案、推翻決定、需要我操作後台時例外）
 
 本機開發：`npm install`（第一次）→ `npm run dev` → 打開 http://localhost:5173 。需要 `.env.local`（格式見 `.env.example`）。

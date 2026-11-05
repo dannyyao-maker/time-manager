@@ -1,24 +1,52 @@
+import { useState } from 'react'
 import { signOut, type Role } from '../hooks/useAuth'
+import ItemsPage from './ItemsPage'
+import CategoriesPage from './CategoriesPage'
 
 type Props = { displayName: string; role: Role }
 
-const roleLabel: Record<Role, string> = {
-  owner: '擁有者（可編輯）',
-  viewer: '檢視者（只能看）',
-}
+type Tab = 'items' | 'categories'
 
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'items', label: '項目' },
+  { id: 'categories', label: '類別' },
+]
+
+// 登入後的主畫面：上方導覽列＋目前的頁面
 export default function HomePage({ displayName, role }: Props) {
+  const [tab, setTab] = useState<Tab>('items')
+  const canEdit = role === 'owner'
+
   return (
-    <main className="page">
+    <div className="app">
       <header className="topbar">
-        <strong>Time Manager</strong>
-        <button className="btn-secondary" onClick={() => signOut()}>
-          登出
-        </button>
+        <strong className="brand">Time Manager</strong>
+        <nav className="tabs">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className={tab === t.id ? 'tab active' : 'tab'}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+        <div className="user">
+          <span className="user-name">
+            {displayName}
+            {!canEdit && <span className="badge">只能看</span>}
+          </span>
+          <button className="btn-secondary btn-small" onClick={() => signOut()}>
+            登出
+          </button>
+        </div>
       </header>
-      <h1>歡迎，{displayName}</h1>
-      <p className="subtitle">身分：{roleLabel[role]}</p>
-      <p className="status">登入成功。行事曆和每日清單會在接下來的階段加入。</p>
-    </main>
+
+      <main className="content">
+        {tab === 'items' && <ItemsPage canEdit={canEdit} />}
+        {tab === 'categories' && <CategoriesPage canEdit={canEdit} />}
+      </main>
+    </div>
   )
 }
