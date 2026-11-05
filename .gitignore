@@ -1,0 +1,21 @@
+# 環境變數（金鑰、網址）：絕不上傳，只放行範例檔
+.env
+.env.*
+!.env.example
+
+# 套件與打包結果（會自動產生）
+node_modules/
+dist/
+
+# 私人資料備份：絕不上傳
+backups/
+
+# 編輯器、系統檔
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+*.log
+
+# Claude Code 個人設定
+.claude/settings.local.json
