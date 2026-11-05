@@ -116,7 +116,7 @@ export default function ItemsPage({ canEdit }: Props) {
       {editing && (
         <ItemForm
           item={editing === 'new' ? null : editing}
-          defaultDate={today}
+          defaults={{ startDate: today }}
           categories={categories}
           onClose={() => setEditing(null)}
           onSave={async (input) => {

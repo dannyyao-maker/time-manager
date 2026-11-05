@@ -1,20 +1,22 @@
 import { useState } from 'react'
 import { signOut, type Role } from '../hooks/useAuth'
+import CalendarPage from './CalendarPage'
 import ItemsPage from './ItemsPage'
 import CategoriesPage from './CategoriesPage'
 
 type Props = { displayName: string; role: Role }
 
-type Tab = 'items' | 'categories'
+type Tab = 'calendar' | 'items' | 'categories'
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'items', label: '項目' },
+  { id: 'calendar', label: '行事曆' },
+  { id: 'items', label: '項目列表' },
   { id: 'categories', label: '類別' },
 ]
 
 // 登入後的主畫面：上方導覽列＋目前的頁面
 export default function HomePage({ displayName, role }: Props) {
-  const [tab, setTab] = useState<Tab>('items')
+  const [tab, setTab] = useState<Tab>('calendar')
   const canEdit = role === 'owner'
 
   return (
@@ -44,6 +46,7 @@ export default function HomePage({ displayName, role }: Props) {
       </header>
 
       <main className="content">
+        {tab === 'calendar' && <CalendarPage canEdit={canEdit} />}
         {tab === 'items' && <ItemsPage canEdit={canEdit} />}
         {tab === 'categories' && <CategoriesPage canEdit={canEdit} />}
       </main>

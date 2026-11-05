@@ -476,6 +476,57 @@ textarea {
   padding-left: 20px;
 }
 
+/* ---------- 行事曆（FullCalendar） ---------- */
+
+.content:has(.calendar-page) {
+  max-width: 1200px;
+}
+
+.calendar-hint {
+  margin: -8px 0 12px;
+}
+
+.calendar-wrap {
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  --fc-button-bg-color: #ffffff;
+  --fc-button-border-color: #d1d5db;
+  --fc-button-text-color: var(--text);
+  --fc-button-hover-bg-color: #f3f4f6;
+  --fc-button-hover-border-color: #d1d5db;
+  --fc-button-active-bg-color: #eef2ff;
+  --fc-button-active-border-color: var(--accent);
+  --fc-today-bg-color: #eff6ff;
+  --fc-now-indicator-color: var(--danger);
+  --fc-border-color: #edf0f3;
+}
+
+.calendar-wrap .fc .fc-button {
+  font-size: 0.875rem;
+  padding: 5px 10px;
+  box-shadow: none !important;
+}
+
+.calendar-wrap .fc .fc-button-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.calendar-wrap .fc .fc-toolbar-title {
+  font-size: 1.2rem;
+}
+
+.calendar-wrap .fc-event {
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.calendar-wrap .fc-daygrid-dot-event .fc-event-title {
+  font-weight: 500;
+}
+
 /* ---------- 手機 ---------- */
 
 @media (max-width: 640px) {
@@ -523,6 +574,30 @@ textarea {
 
   .cat-child {
     padding-left: 18px;
+  }
+
+  .calendar-wrap {
+    padding: 6px;
+    margin: 0 -10px;
+  }
+
+  .calendar-wrap .fc .fc-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .calendar-wrap .fc .fc-toolbar-chunk:nth-child(2) {
+    order: -1;
+    flex-basis: 100%;
+    text-align: center;
+  }
+
+  .calendar-wrap .fc .fc-toolbar-title {
+    font-size: 1.05rem;
+  }
+
+  .calendar-wrap .fc-event {
+    font-size: 0.7rem;
   }
 
   .modal-backdrop {

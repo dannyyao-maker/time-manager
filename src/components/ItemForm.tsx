@@ -2,24 +2,25 @@ import { useState, type FormEvent } from 'react'
 import type { Category, Item, ItemInput } from '../data/types'
 import { sortAsTree } from '../data/categories'
 import { formatTime } from '../lib/dates'
+import type { ItemDefaults } from '../lib/calendarEvents'
 import Modal from './Modal'
 
 type Props = {
   item: Item | null // null = 新增
-  defaultDate: string
+  defaults: ItemDefaults // 新增時的預設日期／時間
   categories: Category[]
   onSave: (input: ItemInput) => Promise<void>
   onDelete?: () => Promise<void>
   onClose: () => void
 }
 
-export default function ItemForm({ item, defaultDate, categories, onSave, onDelete, onClose }: Props) {
+export default function ItemForm({ item, defaults, categories, onSave, onDelete, onClose }: Props) {
   const [title, setTitle] = useState(item?.title ?? '')
-  const [startDate, setStartDate] = useState(item?.start_date ?? defaultDate)
-  const [endDate, setEndDate] = useState(item?.end_date ?? defaultDate)
-  const [allDay, setAllDay] = useState(item ? !item.start_time : true)
-  const [startTime, setStartTime] = useState(formatTime(item?.start_time ?? null))
-  const [endTime, setEndTime] = useState(formatTime(item?.end_time ?? null))
+  const [startDate, setStartDate] = useState(item?.start_date ?? defaults.startDate)
+  const [endDate, setEndDate] = useState(item?.end_date ?? defaults.endDate ?? defaults.startDate)
+  const [allDay, setAllDay] = useState(item ? !item.start_time : !defaults.startTime)
+  const [startTime, setStartTime] = useState(formatTime(item ? item.start_time : defaults.startTime ?? null))
+  const [endTime, setEndTime] = useState(formatTime(item ? item.end_time : defaults.endTime ?? null))
   const [categoryId, setCategoryId] = useState(item?.category_id ?? '')
   const [location, setLocation] = useState(item?.location ?? '')
   const [note, setNote] = useState(item?.note ?? '')

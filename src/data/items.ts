@@ -18,6 +18,19 @@ export async function listItems(fromDate?: string): Promise<Item[]> {
   return data as Item[]
 }
 
+// 和 [from, to] 這段日期有重疊的項目（給行事曆用；兩端都包含）
+export async function listItemsInRange(from: string, to: string): Promise<Item[]> {
+  const { data, error } = await supabase
+    .from('items')
+    .select(COLUMNS)
+    .lte('start_date', to)
+    .gte('end_date', from)
+    .order('start_date')
+    .order('start_time', { nullsFirst: true })
+  if (error) throw error
+  return data as Item[]
+}
+
 export async function createItem(input: ItemInput): Promise<Item> {
   const { data, error } = await supabase.from('items').insert(input).select(COLUMNS).single()
   if (error) throw error
