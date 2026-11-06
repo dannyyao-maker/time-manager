@@ -745,6 +745,83 @@ button.item-row:hover:not(:disabled) {
   margin-top: 16px;
 }
 
+/* ---------- 只能看的人（女友檢視） ---------- */
+
+.tabs-spacer {
+  flex: 1;
+}
+
+.viewer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.switch input {
+  appearance: none;
+  position: relative;
+  width: 40px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--line-strong);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch input::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s;
+}
+
+.switch input:checked {
+  background: var(--accent);
+}
+
+.switch input:checked::after {
+  transform: translateX(18px);
+}
+
+.calendar-wrap .fc-event.is-busy .fc-event-title {
+  font-weight: 600;
+}
+
+.sheet-row.static {
+  cursor: default;
+}
+
+.backup-list {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+
+.backup-list li {
+  margin-bottom: 4px;
+}
+
 /* ---------- 某一天的清單（手機點月曆日期） ---------- */
 
 .sheet-add {
@@ -1075,6 +1152,11 @@ button.item-row:hover:not(:disabled) {
 
   .content {
     padding: 14px 12px calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* 只能看的人沒有下方分頁列 */
+  .content.viewer {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
   .item-row {

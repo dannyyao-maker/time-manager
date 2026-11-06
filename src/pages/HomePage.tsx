@@ -5,6 +5,7 @@ import DailyPage from './DailyPage'
 import ItemsPage from './ItemsPage'
 import CategoriesPage from './CategoriesPage'
 import TabIcon from '../components/TabIcon'
+import BackupDialog from '../components/BackupDialog'
 
 type Props = { displayName: string; role: Role }
 
@@ -32,8 +33,10 @@ function loadTab(): Tab {
 
 // 登入後的主畫面：上方導覽列＋目前的頁面
 export default function HomePage({ displayName, role }: Props) {
-  const [tab, setTab] = useState<Tab>(loadTab)
   const canEdit = role === 'owner'
+  // 只能看的人只有行事曆一頁（畫面乾淨）
+  const [tab, setTab] = useState<Tab>(() => (canEdit ? loadTab() : 'calendar'))
+  const [showBackup, setShowBackup] = useState(false)
 
   function changeTab(t: Tab) {
     setTab(t)
@@ -48,31 +51,42 @@ export default function HomePage({ displayName, role }: Props) {
     <div className="app">
       <header className="topbar">
         <strong className="brand">Time Manager</strong>
-        <nav className="tabs" aria-label="頁面">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              className={tab === t.id ? 'tab active' : 'tab'}
-              onClick={() => changeTab(t.id)}
-              aria-current={tab === t.id ? 'page' : undefined}
-            >
-              <TabIcon name={t.id} />
-              <span>{t.label}</span>
-            </button>
-          ))}
-        </nav>
+        {canEdit ? (
+          <nav className="tabs" aria-label="頁面">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className={tab === t.id ? 'tab active' : 'tab'}
+                onClick={() => changeTab(t.id)}
+                aria-current={tab === t.id ? 'page' : undefined}
+              >
+                <TabIcon name={t.id} />
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </nav>
+        ) : (
+          <div className="tabs-spacer" />
+        )}
         <div className="user">
           <span className="user-name">
             {displayName}
             {!canEdit && <span className="badge">只能看</span>}
           </span>
+          {canEdit && (
+            <button className="btn-ghost btn-small" onClick={() => setShowBackup(true)}>
+              備份
+            </button>
+          )}
           <button className="btn-secondary btn-small" onClick={() => signOut()}>
             登出
           </button>
         </div>
       </header>
 
-      <main className="content">
+      {showBackup && <BackupDialog onClose={() => setShowBackup(false)} />}
+
+      <main className={canEdit ? 'content' : 'content viewer'}>
         {tab === 'calendar' && <CalendarPage canEdit={canEdit} />}
         {tab === 'daily' && <DailyPage canEdit={canEdit} />}
         {tab === 'items' && <ItemsPage canEdit={canEdit} />}

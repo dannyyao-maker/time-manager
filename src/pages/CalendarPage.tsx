@@ -20,6 +20,27 @@ import { addDays, eventToTiming, itemToEvent, itemToInput, selectionToDefaults }
 import { toISODate, todayISO } from '../lib/dates'
 import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 import DaySheet from '../components/DaySheet'
+import BusyDetail from '../components/BusyDetail'
+import { mergeBusy, type BusyBlock } from '../lib/busy'
+import { shade, tint } from '../lib/color'
+
+const BUSY_COLOR = '#8C837B'
+
+// 忙碌時段 → 行事曆事件（灰色、不顯示內容）
+function busyToEvent(block: BusyBlock, i: number): EventInput {
+  return {
+    id: `busy-${i}`,
+    title: block.allDay ? '整天：有安排' : '忙碌',
+    start: block.start,
+    end: block.end,
+    allDay: block.allDay,
+    backgroundColor: tint(BUSY_COLOR, 0.22),
+    borderColor: BUSY_COLOR,
+    textColor: shade(BUSY_COLOR, 0.35),
+    classNames: ['is-busy'],
+    extendedProps: { block },
+  }
+}
 import { useIsNarrow, useIsTouch } from '../hooks/useMedia'
 import type { DateClickArg } from '@fullcalendar/interaction'
 
@@ -59,6 +80,15 @@ export default function CalendarPage({ canEdit }: Props) {
   const [error, setError] = useState<string | null>(null)
   const isNarrow = useIsNarrow()
   const isTouch = useIsTouch()
+  // 只能看的人：預設只看空閒／忙碌；打開「顯示細節」才看到內容
+  const [showDetails, setShowDetails] = useState(false)
+  const busyModeRef = useRef(!canEdit)
+  busyModeRef.current = !canEdit && !showDetails
+  const [busyDetail, setBusyDetail] = useState<BusyBlock | null>(null)
+
+  useEffect(() => {
+    calendarRef.current?.getApi().refetchEvents()
+  }, [showDetails])
 
   useEffect(() => {
     listCategories()
@@ -83,7 +113,9 @@ export default function CalendarPage({ canEdit }: Props) {
       listOccurrences(from, to)
         .then((occs) => {
           setError(null)
-          success(occs.map((occ) => itemToEvent(occ, categoriesRef.current)))
+          // 女友檢視（預設）：只顯示合併後的忙碌時段
+          if (busyModeRef.current) success(mergeBusy(occs).map(busyToEvent))
+          else success(occs.map((occ) => itemToEvent(occ, categoriesRef.current)))
         })
         .catch((e) => {
           setError(errMsg(e))
@@ -100,8 +132,24 @@ export default function CalendarPage({ canEdit }: Props) {
   }
 
   function handleEventClick(arg: EventClickArg) {
-    if (!canEdit) return
-    setEditing({ kind: 'occ', occ: arg.event.extendedProps.item as Occurrence })
+    const block = arg.event.extendedProps.block as BusyBlock | undefined
+    if (block) {
+      setBusyDetail(block)
+      return
+    }
+    const occ = arg.event.extendedProps.item as Occurrence
+    if (canEdit) {
+      setEditing({ kind: 'occ', occ })
+    } else {
+      // 只能看：顯示這一筆的細節
+      const allDay = !occ.start_time
+      setBusyDetail({
+        allDay,
+        start: allDay ? occ.start_date : `${occ.start_date}T${occ.start_time!.slice(0, 5)}`,
+        end: allDay ? addDays(occ.end_date, 1) : `${occ.end_date}T${(occ.end_time ?? occ.start_time!).slice(0, 5)}`,
+        items: [occ],
+      })
+    }
   }
 
   // 拖拉移動或拉長：直接存回資料庫；失敗就還原
@@ -156,6 +204,18 @@ export default function CalendarPage({ canEdit }: Props) {
 
       {error && <p className="error">發生錯誤：{error}</p>}
 
+      {!canEdit && (
+        <div className="viewer-bar">
+          <span className="muted small">
+            {showDetails ? '正在顯示行程內容' : '灰色＝忙碌；點一下可以看是什麼'}
+          </span>
+          <label className="switch">
+            <input type="checkbox" checked={showDetails} onChange={(e) => setShowDetails(e.target.checked)} />
+            <span>顯示細節</span>
+          </label>
+        </div>
+      )}
+
       <div className="calendar-wrap">
         <FullCalendar
           ref={calendarRef}
@@ -170,10 +230,11 @@ export default function CalendarPage({ canEdit }: Props) {
           }}
           height={height}
           fixedWeekCount={false}
-          dayCellContent={(arg) => arg.date.getDate()}
-          // 項目都畫成淡色標籤；月曆只寫標題（時間點進去看）
+          // 項目都畫成淡色標籤；月曆只寫標題（時間點進去看）、日期只寫數字
           eventDisplay="block"
-          views={{ dayGridMonth: { displayEventTime: false } }}
+          views={{
+            dayGridMonth: { displayEventTime: false, dayCellContent: (arg) => arg.date.getDate() },
+          }}
           events={fetchEvents}
           editable={canEdit && !isTouch}
           selectable={canEdit && !isTouch}
@@ -197,6 +258,10 @@ export default function CalendarPage({ canEdit }: Props) {
         <button className="fab" onClick={() => openNew(todayISO())} aria-label="新增項目">
           ＋
         </button>
+      )}
+
+      {busyDetail && (
+        <BusyDetail block={busyDetail} categories={categories} onClose={() => setBusyDetail(null)} />
       )}
 
       {sheetDate && (
