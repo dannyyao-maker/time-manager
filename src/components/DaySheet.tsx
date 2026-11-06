@@ -5,6 +5,7 @@ import { listOccurrences } from '../data/occurrences'
 import { memberBadge, type Member } from '../data/members'
 import { formatDateLabel, formatTime } from '../lib/dates'
 import { splitDaily } from '../lib/daily'
+import { freeSlots } from '../lib/freeTime'
 import { getCurrentUserId } from '../lib/session'
 import { canEditItem, isMine, visibility, type ViewMode } from '../lib/views'
 import Modal from './Modal'
@@ -12,6 +13,7 @@ import Modal from './Modal'
 type Props = {
   date: string
   mode: ViewMode
+  showFree?: boolean // 共用行事曆：顯示這天兩個人都有空的時段
   categories: Category[]
   members: Member[]
   canEdit: boolean
@@ -22,7 +24,7 @@ type Props = {
 }
 
 // 點月曆的某一天：先看到這天原本的行程，右上角小＋才新增（參考 TimeTree）
-export default function DaySheet({ date, mode, categories, members, canEdit, onClose, onOpen, onView, onAdd }: Props) {
+export default function DaySheet({ date, mode, showFree, categories, members, canEdit, onClose, onOpen, onView, onAdd }: Props) {
   const me = getCurrentUserId()
   const [items, setItems] = useState<Occurrence[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,6 +38,7 @@ export default function DaySheet({ date, mode, categories, members, canEdit, onC
   const visible = (items ?? []).filter((o) => visibility(o, mode, me) !== 'hidden')
   const sections = splitDaily(visible, date)
   const ordered = [...sections.allDay, ...sections.timed]
+  const free = showFree && items ? freeSlots(items, date, date, 60) : []
 
   return (
     <Modal title={formatDateLabel(date)} onClose={onClose} bare>
@@ -52,6 +55,13 @@ export default function DaySheet({ date, mode, categories, members, canEdit, onC
           </button>
         </span>
       </div>
+      {showFree && items && (
+        <p className={free.length ? 'free-note' : 'free-note none'}>
+          {free.length
+            ? `兩人都有空：${free.map((f) => `${f.start}–${f.end}`).join('、')}`
+            : '這天 09:00–23:00 沒有 1 小時以上的共同空檔'}
+        </p>
+      )}
       {error && <p className="error">發生錯誤：{error}</p>}
       {!items && !error && <p className="muted">載入中…</p>}
       {items && ordered.length === 0 && (

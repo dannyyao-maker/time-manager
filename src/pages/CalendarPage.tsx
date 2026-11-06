@@ -23,6 +23,7 @@ import { getCurrentUserId } from '../lib/session'
 import { canEditItem, type ViewMode } from '../lib/views'
 import { buildViewEvents, findPartner } from '../lib/viewEvents'
 import type { BusyBlock } from '../lib/busy'
+import { freeSlots, longestFreeByDay } from '../lib/freeTime'
 import { useIsNarrow, useIsTouch } from '../hooks/useMedia'
 import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 import DaySheet from '../components/DaySheet'
@@ -56,6 +57,32 @@ function save(key: string, value: string) {
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
+const FREE_KEY = 'tm.showFree'
+const MONTH_FREE_MINUTES = 120 // 月曆：一天至少有 2 小時共同空檔才標綠色
+const WEEK_FREE_MINUTES = 60 // 週曆／日曆：至少 1 小時的空檔才標
+
+// 共同空檔 → 行事曆的背景色塊（綠色）
+function freeEvents(occs: Occurrence[], from: string, to: string, isMonth: boolean): EventInput[] {
+  if (isMonth) {
+    const longest = longestFreeByDay(freeSlots(occs, from, to, MONTH_FREE_MINUTES))
+    return [...longest.keys()].map((day) => ({
+      id: `free-${day}`,
+      start: day,
+      end: addDays(day, 1),
+      allDay: true,
+      display: 'background',
+      classNames: ['free-day'],
+    }))
+  }
+  return freeSlots(occs, from, to, WEEK_FREE_MINUTES).map((s, i) => ({
+    id: `free-${i}`,
+    start: `${s.date}T${s.start}`,
+    end: `${s.date}T${s.end}`,
+    display: 'background',
+    classNames: ['free-slot'],
+  }))
+}
+
 // 單筆項目的細節（給對方的個人行程用，只能看）
 function singleBlock(occ: Occurrence): BusyBlock {
   const allDay = !occ.start_time
@@ -78,12 +105,13 @@ export default function CalendarPage({ canEdit }: Props) {
   const [sheetDate, setSheetDate] = useState<string | null>(null)
   const [detail, setDetail] = useState<BusyBlock | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showFree, setShowFree] = useState(() => load(FREE_KEY, ['on', 'off'], 'on') === 'on')
   const isNarrow = useIsNarrow()
   const isTouch = useIsTouch()
 
   // 行事曆元件讀資料時用的最新值
-  const ctx = useRef({ mode, me, members, categories: [] as Category[] })
-  ctx.current = { mode, me, members, categories: categories ?? [] }
+  const ctx = useRef({ mode, me, members, categories: [] as Category[], showFree })
+  ctx.current = { mode, me, members, categories: categories ?? [], showFree }
 
   const partner = findPartner(members, me)
   const partnerName = partner ? memberBadge(partner).label : null
@@ -103,7 +131,7 @@ export default function CalendarPage({ canEdit }: Props) {
   // 換行事曆時重新畫
   useEffect(() => {
     refetch()
-  }, [activeMode, members])
+  }, [activeMode, members, showFree])
 
   // 行事曆換到哪段日期，就去資料庫拿那段日期的項目
   const fetchEvents = useCallback(
@@ -115,7 +143,13 @@ export default function CalendarPage({ canEdit }: Props) {
           setError(null)
           const c = ctx.current
           const m = c.mode === 'partner' && !findPartner(c.members, c.me) ? 'mine' : c.mode
-          success(buildViewEvents(occs, m, c.me, c.members, c.categories))
+          const events = buildViewEvents(occs, m, c.me, c.members, c.categories)
+          // 共用行事曆：標出兩個人都有空的時段
+          if (m === 'shared' && c.showFree) {
+            const isMonth = calendarRef.current?.getApi().view.type === 'dayGridMonth'
+            events.push(...freeEvents(occs, from, to, isMonth))
+          }
+          success(events)
         })
         .catch((e) => {
           setError(errMsg(e))
@@ -238,7 +272,21 @@ export default function CalendarPage({ canEdit }: Props) {
             <span className="dot legend-date" />
             約會
           </span>
-          <span>點一下可以看細節</span>
+          <span className="legend-item">
+            <span className="dot legend-free" />
+            兩人都有空
+          </span>
+          <label className="switch legend-switch">
+            <input
+              type="checkbox"
+              checked={showFree}
+              onChange={(e) => {
+                setShowFree(e.target.checked)
+                save(FREE_KEY, e.target.checked ? 'on' : 'off')
+              }}
+            />
+            <span>標出共同空檔</span>
+          </label>
         </p>
       )}
 
@@ -295,6 +343,7 @@ export default function CalendarPage({ canEdit }: Props) {
         <DaySheet
           date={sheetDate}
           mode={activeMode}
+          showFree={activeMode === 'shared' && showFree}
           categories={categories}
           members={members}
           canEdit={canEdit}
