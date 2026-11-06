@@ -13,6 +13,7 @@ export type CalendarEvent = {
   allDay: boolean
   backgroundColor: string
   borderColor: string
+  classNames: string[]
   extendedProps: { item: Item }
 }
 
@@ -31,6 +32,7 @@ export function itemToEvent(item: Item, categories: Category[]): CalendarEvent {
     title: item.location ? `${item.title}｜${item.location}` : item.title,
     backgroundColor: color,
     borderColor: color,
+    classNames: item.is_done ? ['is-done'] : [],
     extendedProps: { item },
   }
 
@@ -107,5 +109,6 @@ export function itemToInput(item: Item): ItemInput {
     category_id: item.category_id,
     note: item.note,
     location: item.location,
+    is_done: item.is_done,
   }
 }

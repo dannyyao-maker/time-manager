@@ -42,6 +42,12 @@ export async function updateItem(id: string, input: ItemInput) {
   if (error) throw error
 }
 
+// 勾選／取消完成：只改這一個欄位
+export async function setItemDone(id: string, done: boolean) {
+  const { error } = await supabase.from('items').update({ is_done: done }).eq('id', id)
+  if (error) throw error
+}
+
 export async function deleteItem(id: string) {
   const { error } = await supabase.from('items').delete().eq('id', id)
   if (error) throw error

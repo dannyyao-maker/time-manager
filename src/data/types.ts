@@ -25,7 +25,7 @@ export type Item = {
   repeat_until: string | null
 }
 
-// 表單送出的內容（id、完成狀態、重複規則另外處理）
+// 表單送出的內容（id、重複規則另外處理）
 export type ItemInput = {
   title: string
   start_date: string
@@ -35,4 +35,5 @@ export type ItemInput = {
   category_id: string | null
   note: string | null
   location: string | null
+  is_done?: boolean // 不給 = 不改（新增時預設未完成）
 }

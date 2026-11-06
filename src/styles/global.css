@@ -326,6 +326,121 @@ textarea {
   white-space: pre-wrap;
 }
 
+.item-row.done .item-title,
+.daily-row.done .item-title {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+/* ---------- 每日清單 ---------- */
+
+.day-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.day-nav-center {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.day-picker {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.daily-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background: #10b981;
+  transition: width 0.2s;
+}
+
+.daily-list {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+}
+
+.daily-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 6px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--border);
+  border-radius: 8px;
+}
+
+.daily-row.done {
+  background: #fafafa;
+}
+
+.daily-check {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: #10b981;
+}
+
+.daily-time {
+  flex-shrink: 0;
+  width: 92px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  color: var(--text);
+}
+
+.daily-main:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.daily-empty {
+  margin: 8px 0 18px;
+}
+
+.quick-add {
+  margin-top: 4px;
+}
+
 /* ---------- 類別 ---------- */
 
 .add-top {
@@ -527,6 +642,15 @@ textarea {
   font-weight: 500;
 }
 
+/* 已完成的項目：變淡、畫刪除線 */
+.calendar-wrap .fc-event.is-done {
+  opacity: 0.45;
+}
+
+.calendar-wrap .fc-event.is-done .fc-event-title {
+  text-decoration: line-through;
+}
+
 /* ---------- 手機 ---------- */
 
 @media (max-width: 640px) {
@@ -566,6 +690,33 @@ textarea {
 
   .item-time {
     width: auto;
+  }
+
+  .daily-row {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+  }
+
+  .daily-time {
+    width: auto;
+  }
+
+  .daily-main {
+    flex-basis: 100%;
+    padding-left: 30px;
+  }
+
+  .day-nav-center strong {
+    font-size: 0.9rem;
+  }
+
+  .day-nav .nav-text {
+    display: none;
+  }
+
+  .day-nav > button {
+    padding: 8px 14px;
+    font-size: 1.1rem;
   }
 
   .row-2 {

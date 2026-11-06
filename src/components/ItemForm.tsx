@@ -24,6 +24,7 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
   const [categoryId, setCategoryId] = useState(item?.category_id ?? '')
   const [location, setLocation] = useState(item?.location ?? '')
   const [note, setNote] = useState(item?.note ?? '')
+  const [done, setDone] = useState(item?.is_done ?? false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -66,6 +67,7 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
         category_id: categoryId || null,
         location: location.trim() || null,
         note: note.trim() || null,
+        is_done: done,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -155,6 +157,13 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
           備註（選填）
           <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
+
+        {item && (
+          <label className="checkbox">
+            <input type="checkbox" checked={done} onChange={(e) => setDone(e.target.checked)} />
+            已完成
+          </label>
+        )}
 
         {error && <p className="error">{error}</p>}
 

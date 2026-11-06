@@ -91,14 +91,17 @@ export default function ItemsPage({ canEdit }: Props) {
             return (
               <button
                 key={item.id}
-                className="item-row"
+                className={item.is_done ? 'item-row done' : 'item-row'}
                 style={{ borderLeftColor: color }}
                 onClick={() => canEdit && setEditing(item)}
                 disabled={!canEdit}
               >
                 <span className="item-time">{timeText(item)}</span>
                 <span className="item-main">
-                  <span className="item-title">{item.title}</span>
+                  <span className="item-title">
+                    {item.is_done && '✓ '}
+                    {item.title}
+                  </span>
                   <span className="item-meta">
                     <span className="dot" style={{ background: color }} />
                     {categoryLabel(item.category_id, categories)}

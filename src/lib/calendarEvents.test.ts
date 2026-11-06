@@ -174,7 +174,18 @@ describe('itemToInput', () => {
   it('只留表單欄位', () => {
     const input = itemToInput(makeItem({ title: 'A', note: 'n' }))
     expect(Object.keys(input).sort()).toEqual(
-      ['category_id', 'end_date', 'end_time', 'location', 'note', 'start_date', 'start_time', 'title'].sort(),
+      ['category_id', 'end_date', 'end_time', 'is_done', 'location', 'note', 'start_date', 'start_time', 'title'].sort(),
     )
+  })
+
+  it('拖拉改時間時保留完成狀態', () => {
+    expect(itemToInput(makeItem({ is_done: true })).is_done).toBe(true)
+  })
+})
+
+describe('完成狀態在行事曆上的樣式', () => {
+  it('完成的項目加上 is-done（畫刪除線、變淡）', () => {
+    expect(itemToEvent(makeItem({ is_done: true }), cats).classNames).toEqual(['is-done'])
+    expect(itemToEvent(makeItem({ is_done: false }), cats).classNames).toEqual([])
   })
 })
