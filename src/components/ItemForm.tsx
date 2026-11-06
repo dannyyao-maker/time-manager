@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import type { Category, Item, ItemInput, RepeatFreq } from '../data/types'
-import { sortAsTree } from '../data/categories'
+import { topLevel } from '../data/categories'
 import { formatShortDate, formatTime } from '../lib/dates'
 import { describeRepeat } from '../lib/recurrence'
 import type { ItemDefaults } from '../lib/calendarEvents'
@@ -43,7 +43,10 @@ export default function ItemForm({ item, mode = 'item', defaults, categories, on
   const [busy, setBusy] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
-  const tree = sortAsTree(categories)
+  // 只列第一層；如果這筆還掛在舊的第二層類別上，也列出來，免得存檔時被清掉
+  const options = topLevel(categories)
+  const current = categories.find((c) => c.id === item?.category_id)
+  if (current && !options.includes(current)) options.push(current)
   const isOccurrence = mode === 'occurrence'
   const showRepeat = !isOccurrence
   const showDone = !!item && mode !== 'series' && !repeatFreq
@@ -214,17 +217,11 @@ export default function ItemForm({ item, mode = 'item', defaults, categories, on
           類別
           <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={isOccurrence}>
             <option value="">未分類</option>
-            {tree.map(({ top, children }) => [
-              <option key={top.id} value={top.id}>
-                {top.name}
-              </option>,
-              ...children.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {'　└ '}
-                  {c.name}
-                </option>
-              )),
-            ])}
+            {options.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
           </select>
           {isOccurrence && <span className="muted small">類別要改整串</span>}
         </label>

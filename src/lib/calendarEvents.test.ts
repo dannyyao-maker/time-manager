@@ -72,9 +72,9 @@ describe('itemToEvent：項目 → 行事曆事件', () => {
   })
 
   it('顏色：第二層沒設定就沿用第一層；自己有就用自己的；未分類是灰色', () => {
-    expect(itemToEvent(makeItem({ category_id: 'child' }), cats).backgroundColor).toBe('#3B82F6')
-    expect(itemToEvent(makeItem({ category_id: 'child2' }), cats).backgroundColor).toBe('#10B981')
-    expect(itemToEvent(makeItem({ category_id: null }), cats).backgroundColor).toBe(UNCATEGORIZED_COLOR)
+    expect(itemToEvent(makeItem({ category_id: 'child' }), cats).borderColor).toBe('#3B82F6')
+    expect(itemToEvent(makeItem({ category_id: 'child2' }), cats).borderColor).toBe('#10B981')
+    expect(itemToEvent(makeItem({ category_id: null }), cats).borderColor).toBe(UNCATEGORIZED_COLOR)
     expect(resolveColor('不存在的類別', cats)).toBe(UNCATEGORIZED_COLOR)
   })
 })

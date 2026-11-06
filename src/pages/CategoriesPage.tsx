@@ -8,34 +8,34 @@ import {
   createStarterCategories,
   deleteCategory,
   listCategories,
-  sortAsTree,
+  topLevel,
   updateCategory,
 } from '../data/categories'
 import ConfirmDialog from '../components/ConfirmDialog'
-import ColorField from '../components/ColorField'
+import ColorSwatches from '../components/ColorSwatches'
 
 type Props = { canEdit: boolean }
 
-type PendingDelete = { category: Category; children: number; items: number }
+type PendingDelete = { category: Category; items: number }
+
+const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 export default function CategoriesPage({ canEdit }: Props) {
-  const [categories, setCategories] = useState<Category[]>([])
+  const [all, setAll] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [newTopName, setNewTopName] = useState('')
-  const [addingChildFor, setAddingChildFor] = useState<string | null>(null)
-  const [newChildName, setNewChildName] = useState('')
-  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [newName, setNewName] = useState('')
+  const [openId, setOpenId] = useState<string | null>(null) // 正在編輯的類別
   const [renameValue, setRenameValue] = useState('')
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null)
   const [busy, setBusy] = useState(false)
 
   const reload = useCallback(async () => {
     try {
-      setCategories(await listCategories())
+      setAll(await listCategories())
       setError(null)
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errMsg(e))
     } finally {
       setLoading(false)
     }
@@ -45,153 +45,63 @@ export default function CategoriesPage({ canEdit }: Props) {
     reload()
   }, [reload])
 
-  // 包一層：執行時鎖住按鈕、出錯顯示訊息、完成後重新讀取
   async function run(action: () => Promise<void>) {
     setBusy(true)
     try {
       await action()
       await reload()
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errMsg(e))
     } finally {
       setBusy(false)
     }
   }
 
-  const tree = sortAsTree(categories)
+  const categories = topLevel(all)
 
-  function addTop() {
-    const name = newTopName.trim()
+  function add() {
+    const name = newName.trim()
     if (!name) return
     run(async () => {
-      const tops = categories.filter((c) => !c.parent_id)
-      await createCategory({
-        name,
-        parent_id: null,
-        color: PALETTE[tops.length % PALETTE.length],
-        sort_order: tops.length,
-      })
-      setNewTopName('')
+      // 預設用還沒被用過的顏色
+      const used = new Set(categories.map((c) => c.color?.toLowerCase()))
+      const color = (PALETTE.find((p) => !used.has(p.hex.toLowerCase())) ?? PALETTE[categories.length % PALETTE.length]).hex
+      await createCategory({ name, color, sort_order: categories.length })
+      setNewName('')
     })
   }
 
-  function addChild(parentId: string) {
-    const name = newChildName.trim()
-    if (!name) return
-    run(async () => {
-      const siblings = categories.filter((c) => c.parent_id === parentId)
-      await createCategory({ name, parent_id: parentId, color: null, sort_order: siblings.length })
-      setNewChildName('')
-      setAddingChildFor(null)
-    })
+  function toggleOpen(cat: Category) {
+    if (openId === cat.id) {
+      setOpenId(null)
+    } else {
+      setOpenId(cat.id)
+      setRenameValue(cat.name)
+    }
   }
 
-  function saveRename(id: string) {
+  function saveName(cat: Category) {
     const name = renameValue.trim()
-    if (!name) return
-    run(async () => {
-      await updateCategory(id, { name })
-      setRenamingId(null)
-    })
-  }
-
-  function changeColor(id: string, color: string | null) {
-    run(() => updateCategory(id, { color }))
+    if (!name || name === cat.name) return
+    run(() => updateCategory(cat.id, { name }))
   }
 
   async function askDelete(category: Category) {
     setBusy(true)
     try {
-      const impact = await countDeleteImpact(category, categories)
+      const impact = await countDeleteImpact(category)
       setPendingDelete({ category, ...impact })
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
+      setError(errMsg(e))
     } finally {
       setBusy(false)
     }
   }
 
-  function renderRow(cat: Category, isChild: boolean, parentColor?: string | null) {
-    const shownColor = cat.color ?? parentColor ?? UNCATEGORIZED_COLOR
-    const renaming = renamingId === cat.id
-    return (
-      <div className={`cat-row ${isChild ? 'cat-child' : ''}`} key={cat.id}>
-        {canEdit ? (
-          <ColorField value={shownColor} disabled={busy} onCommit={(c) => changeColor(cat.id, c)} />
-        ) : (
-          <span className="dot" style={{ background: shownColor }} />
-        )}
-
-        {renaming ? (
-          <form
-            className="inline-form"
-            onSubmit={(e) => {
-              e.preventDefault()
-              saveRename(cat.id)
-            }}
-          >
-            <input
-              autoFocus
-              value={renameValue}
-              maxLength={50}
-              onChange={(e) => setRenameValue(e.target.value)}
-            />
-            <button className="btn-small" type="submit" disabled={busy}>
-              儲存
-            </button>
-            <button className="btn-small btn-ghost" type="button" onClick={() => setRenamingId(null)}>
-              取消
-            </button>
-          </form>
-        ) : (
-          <span className="cat-name">
-            {cat.name}
-            {isChild && !cat.color && <span className="muted">（沿用上層顏色）</span>}
-          </span>
-        )}
-
-        {canEdit && !renaming && (
-          <span className="cat-actions">
-            {isChild && cat.color && (
-              <button className="btn-small btn-ghost" onClick={() => changeColor(cat.id, null)} disabled={busy}>
-                改回上層顏色
-              </button>
-            )}
-            {!isChild && (
-              <button
-                className="btn-small btn-ghost"
-                onClick={() => {
-                  setAddingChildFor(cat.id)
-                  setNewChildName('')
-                }}
-                disabled={busy}
-              >
-                ＋子類別
-              </button>
-            )}
-            <button
-              className="btn-small btn-ghost"
-              onClick={() => {
-                setRenamingId(cat.id)
-                setRenameValue(cat.name)
-              }}
-              disabled={busy}
-            >
-              改名
-            </button>
-            <button className="btn-small btn-ghost danger-text" onClick={() => askDelete(cat)} disabled={busy}>
-              刪除
-            </button>
-          </span>
-        )}
-      </div>
-    )
-  }
-
   if (loading) return <p className="muted">載入中…</p>
 
   return (
-    <section>
+    <section className="narrow">
       <div className="page-title">
         <h1>類別</h1>
       </div>
@@ -203,16 +113,16 @@ export default function CategoriesPage({ canEdit }: Props) {
           className="inline-form add-top"
           onSubmit={(e) => {
             e.preventDefault()
-            addTop()
+            add()
           }}
         >
           <input
-            placeholder="新增第一層類別，例如「論文」"
-            value={newTopName}
+            placeholder="新類別名稱，例如「論文」"
+            value={newName}
             maxLength={50}
-            onChange={(e) => setNewTopName(e.target.value)}
+            onChange={(e) => setNewName(e.target.value)}
           />
-          <button className="btn-primary" type="submit" disabled={busy || !newTopName.trim()}>
+          <button className="btn-primary" type="submit" disabled={busy || !newName.trim()}>
             新增
           </button>
         </form>
@@ -224,50 +134,63 @@ export default function CategoriesPage({ canEdit }: Props) {
           <button className="btn-secondary" onClick={() => run(createStarterCategories)} disabled={busy}>
             一鍵建立提案裡的初始類別
           </button>
-          <p className="muted small">研所課程（日文、R、國金）、CG、DA、論文、約會、生活、其它重要</p>
+          <p className="muted small">研所課程、CG、DA、論文、約會、生活、其它重要</p>
         </div>
       )}
 
-      <div className="cat-list">
-        {tree.map(({ top, children }) => (
-          <div className="cat-group" key={top.id}>
-            {renderRow(top, false)}
-            {children.map((child) => renderRow(child, true, top.color))}
-            {addingChildFor === top.id && (
-              <form
-                className="inline-form cat-child"
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  addChild(top.id)
-                }}
+      <ul className="cat-list">
+        {categories.map((cat) => {
+          const color = cat.color ?? UNCATEGORIZED_COLOR
+          const open = openId === cat.id
+          return (
+            <li key={cat.id} className={open ? 'cat-card open' : 'cat-card'}>
+              <button
+                className="cat-head"
+                onClick={() => canEdit && toggleOpen(cat)}
+                disabled={!canEdit}
+                aria-expanded={open}
               >
-                <input
-                  autoFocus
-                  placeholder={`「${top.name}」底下的子類別`}
-                  value={newChildName}
-                  maxLength={50}
-                  onChange={(e) => setNewChildName(e.target.value)}
-                />
-                <button className="btn-small" type="submit" disabled={busy || !newChildName.trim()}>
-                  新增
-                </button>
-                <button className="btn-small btn-ghost" type="button" onClick={() => setAddingChildFor(null)}>
-                  取消
-                </button>
-              </form>
-            )}
-          </div>
-        ))}
+                <span className="cat-bar" style={{ background: color }} />
+                <span className="cat-name">{cat.name}</span>
+                {canEdit && <span className="cat-chevron">{open ? '收起' : '編輯'}</span>}
+              </button>
 
-        <div className="cat-group">
-          <div className="cat-row">
-            <span className="dot" style={{ background: UNCATEGORIZED_COLOR }} />
-            <span className="cat-name">
-              未分類 <span className="muted">（項目沒選類別時，固定是灰色，不能刪除）</span>
-            </span>
+              {open && (
+                <div className="cat-body">
+                  <form
+                    className="inline-form"
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      saveName(cat)
+                    }}
+                  >
+                    <input value={renameValue} maxLength={50} onChange={(e) => setRenameValue(e.target.value)} aria-label="類別名稱" />
+                    <button
+                      className="btn-secondary btn-small"
+                      type="submit"
+                      disabled={busy || !renameValue.trim() || renameValue.trim() === cat.name}
+                    >
+                      改名
+                    </button>
+                  </form>
+                  <ColorSwatches value={cat.color} disabled={busy} onPick={(hex) => run(() => updateCategory(cat.id, { color: hex }))} />
+                  <button className="btn-ghost btn-small danger-text cat-delete" onClick={() => askDelete(cat)} disabled={busy}>
+                    刪除這個類別
+                  </button>
+                </div>
+              )}
+            </li>
+          )
+        })}
+
+        <li className="cat-card">
+          <div className="cat-head static">
+            <span className="cat-bar" style={{ background: UNCATEGORIZED_COLOR }} />
+            <span className="cat-name">未分類</span>
+            <span className="muted small">沒選類別時，固定灰色</span>
           </div>
-        </div>
-      </div>
+        </li>
+      </ul>
 
       {pendingDelete && (
         <ConfirmDialog
@@ -277,14 +200,8 @@ export default function CategoriesPage({ canEdit }: Props) {
           message={
             <>
               <p>
-                刪除「<strong>{pendingDelete.category.name}</strong>」會一併刪除：
+                刪除「<strong>{pendingDelete.category.name}</strong>」會一併刪除 <strong>{pendingDelete.items}</strong> 筆項目。
               </p>
-              <ul>
-                {!pendingDelete.category.parent_id && <li>{pendingDelete.children} 個子類別</li>}
-                <li>
-                  <strong>{pendingDelete.items}</strong> 筆項目
-                </li>
-              </ul>
               <p className="error">刪除後無法復原。</p>
             </>
           }
@@ -292,6 +209,7 @@ export default function CategoriesPage({ canEdit }: Props) {
           onConfirm={async () => {
             await deleteCategory(pendingDelete.category.id)
             setPendingDelete(null)
+            setOpenId(null)
             await reload()
           }}
         />

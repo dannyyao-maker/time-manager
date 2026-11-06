@@ -19,6 +19,9 @@ import { listOccurrences, occurrenceToInput, saveThisOccurrence } from '../data/
 import { addDays, eventToTiming, itemToEvent, itemToInput, selectionToDefaults } from '../lib/calendarEvents'
 import { toISODate, todayISO } from '../lib/dates'
 import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
+import DaySheet from '../components/DaySheet'
+import { useIsNarrow, useIsTouch } from '../hooks/useMedia'
+import type { DateClickArg } from '@fullcalendar/interaction'
 
 type Props = { canEdit: boolean }
 
@@ -52,7 +55,10 @@ export default function CalendarPage({ canEdit }: Props) {
   const categoriesRef = useRef<Category[]>([])
   const [view, setView] = useState(loadView)
   const [editing, setEditing] = useState<EditTarget | null>(null)
+  const [sheetDate, setSheetDate] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const isNarrow = useIsNarrow()
+  const isTouch = useIsTouch()
 
   useEffect(() => {
     listCategories()
@@ -113,6 +119,12 @@ export default function CalendarPage({ canEdit }: Props) {
     }
   }
 
+  // 手機：點一下某天 → 從下方滑出這天的清單
+  function handleDateClick(arg: DateClickArg) {
+    if (!isTouch) return
+    setSheetDate(toISODate(arg.date))
+  }
+
   function handleDatesSet(arg: DatesSetArg) {
     if (arg.view.type !== view) {
       setView(arg.view.type)
@@ -125,24 +137,24 @@ export default function CalendarPage({ canEdit }: Props) {
   }
 
   const isTimeGrid = view.startsWith('timeGrid')
+  // 手機：月曆填滿畫面（扣掉上方工具列和下方分頁列）；電腦：月曆依內容自動長高
+  const height = isNarrow ? 'calc(100dvh - 150px)' : isTimeGrid ? 'calc(100vh - 190px)' : 'auto'
+  const openNew = (date: string) => setEditing({ kind: 'new', defaults: { startDate: date } })
 
   return (
     <section className="calendar-page">
-      <div className="page-title">
-        <h1>行事曆</h1>
-        {canEdit && (
-          <button className="btn-primary" onClick={() => setEditing({ kind: 'new', defaults: { startDate: todayISO() } })}>
-            ＋ 新增項目
-          </button>
-        )}
-      </div>
+      {!isNarrow && (
+        <div className="page-title">
+          <h1>行事曆</h1>
+          {canEdit && (
+            <button className="btn-primary" onClick={() => openNew(todayISO())}>
+              ＋ 新增項目
+            </button>
+          )}
+        </div>
+      )}
 
       {error && <p className="error">發生錯誤：{error}</p>}
-      {canEdit && (
-        <p className="muted small calendar-hint">
-          點一下日期或時段新增；拖拉一段可以一次選多天或一段時間；拖動項目可以改時間。
-        </p>
-      )}
 
       <div className="calendar-wrap">
         <FullCalendar
@@ -156,12 +168,18 @@ export default function CalendarPage({ canEdit }: Props) {
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}
-          height={isTimeGrid ? 'calc(100vh - 210px)' : 'auto'}
+          height={height}
+          fixedWeekCount={false}
+          dayCellContent={(arg) => arg.date.getDate()}
+          // 項目都畫成淡色標籤；月曆只寫標題（時間點進去看）
+          eventDisplay="block"
+          views={{ dayGridMonth: { displayEventTime: false } }}
           events={fetchEvents}
-          editable={canEdit}
-          selectable={canEdit}
+          editable={canEdit && !isTouch}
+          selectable={canEdit && !isTouch}
           selectMirror
           select={handleSelect}
+          dateClick={handleDateClick}
           eventClick={handleEventClick}
           eventChange={handleEventChange}
           datesSet={handleDatesSet}
@@ -174,6 +192,29 @@ export default function CalendarPage({ canEdit }: Props) {
           eventTimeFormat={{ hour: '2-digit', minute: '2-digit', hour12: false }}
         />
       </div>
+
+      {isNarrow && canEdit && (
+        <button className="fab" onClick={() => openNew(todayISO())} aria-label="新增項目">
+          ＋
+        </button>
+      )}
+
+      {sheetDate && (
+        <DaySheet
+          date={sheetDate}
+          categories={categories}
+          canEdit={canEdit}
+          onClose={() => setSheetDate(null)}
+          onOpen={(occ) => {
+            setSheetDate(null)
+            setEditing({ kind: 'occ', occ })
+          }}
+          onAdd={(date) => {
+            setSheetDate(null)
+            openNew(date)
+          }}
+        />
+      )}
 
       {editing && (
         <OccurrenceEditor

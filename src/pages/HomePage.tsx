@@ -4,6 +4,7 @@ import CalendarPage from './CalendarPage'
 import DailyPage from './DailyPage'
 import ItemsPage from './ItemsPage'
 import CategoriesPage from './CategoriesPage'
+import TabIcon from '../components/TabIcon'
 
 type Props = { displayName: string; role: Role }
 
@@ -12,7 +13,7 @@ type Tab = 'calendar' | 'daily' | 'items' | 'categories'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'calendar', label: '行事曆' },
   { id: 'daily', label: '每日清單' },
-  { id: 'items', label: '項目列表' },
+  { id: 'items', label: '列表' },
   { id: 'categories', label: '類別' },
 ]
 
@@ -47,14 +48,16 @@ export default function HomePage({ displayName, role }: Props) {
     <div className="app">
       <header className="topbar">
         <strong className="brand">Time Manager</strong>
-        <nav className="tabs">
+        <nav className="tabs" aria-label="頁面">
           {TABS.map((t) => (
             <button
               key={t.id}
               className={tab === t.id ? 'tab active' : 'tab'}
               onClick={() => changeTab(t.id)}
+              aria-current={tab === t.id ? 'page' : undefined}
             >
-              {t.label}
+              <TabIcon name={t.id} />
+              <span>{t.label}</span>
             </button>
           ))}
         </nav>

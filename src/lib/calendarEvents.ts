@@ -4,6 +4,7 @@
 import type { Category, Item, ItemInput } from '../data/types'
 import { resolveColor } from '../data/categories'
 import { parseISODate, toISODate } from './dates'
+import { shade, tint } from './color'
 
 export type CalendarEvent = {
   id: string
@@ -13,6 +14,7 @@ export type CalendarEvent = {
   allDay: boolean
   backgroundColor: string
   borderColor: string
+  textColor: string
   classNames: string[]
   extendedProps: { item: Item }
 }
@@ -31,8 +33,10 @@ export function itemToEvent(item: Item & { key?: string }, categories: Category[
   const base = {
     id: item.key ?? item.id,
     title: item.location ? `${item.title}｜${item.location}` : item.title,
-    backgroundColor: color,
+    // 標籤樣式：淡底色、同色系深一點的字；borderColor 給週曆左邊的色條用
+    backgroundColor: tint(color, 0.18),
     borderColor: color,
+    textColor: shade(color, 0.28),
     classNames: item.is_done ? ['is-done'] : [],
     extendedProps: { item },
   }
