@@ -5,7 +5,7 @@ import type { Item, ItemInput, Occurrence, Override } from './types'
 import { setItemDone } from './items'
 
 const ITEM_COLUMNS =
-  'id, title, start_date, end_date, start_time, end_time, is_done, category_id, note, location, repeat_freq, repeat_until, calendar'
+  'id, title, start_date, end_date, start_time, end_time, is_done, category_id, note, location, repeat_freq, repeat_until, calendar, owner_id'
 const OVERRIDE_COLUMNS =
   'id, item_id, occurrence_date, is_cancelled, is_done, title, start_date, end_date, start_time, end_time, note, location'
 

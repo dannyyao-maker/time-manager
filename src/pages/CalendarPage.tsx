@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
+import interactionPlugin, { type DateClickArg } from '@fullcalendar/interaction'
 import zhTwLocale from '@fullcalendar/core/locales/zh-tw'
 import type {
   DateSelectArg,
@@ -16,53 +16,39 @@ import type { Category, Occurrence } from '../data/types'
 import { listCategories } from '../data/categories'
 import { updateItem } from '../data/items'
 import { listOccurrences, occurrenceToInput, saveThisOccurrence } from '../data/occurrences'
-import { addDays, eventToTiming, itemToEvent, itemToInput, selectionToDefaults } from '../lib/calendarEvents'
+import { listMembers, memberBadge, type Member } from '../data/members'
+import { addDays, eventToTiming, itemToInput, selectionToDefaults } from '../lib/calendarEvents'
 import { toISODate, todayISO } from '../lib/dates'
+import { getCurrentUserId } from '../lib/session'
+import { canEditItem, type ViewMode } from '../lib/views'
+import { buildViewEvents, findPartner } from '../lib/viewEvents'
+import type { BusyBlock } from '../lib/busy'
+import { useIsNarrow, useIsTouch } from '../hooks/useMedia'
 import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 import DaySheet from '../components/DaySheet'
 import BusyDetail from '../components/BusyDetail'
-import { mergeBusy, type BusyBlock } from '../lib/busy'
-import { shade, tint } from '../lib/color'
-
-const BUSY_COLOR = '#8C837B'
-
-// 忙碌時段 → 行事曆事件（灰色、不顯示內容）
-function busyToEvent(block: BusyBlock, i: number): EventInput {
-  return {
-    id: `busy-${i}`,
-    title: block.allDay ? '整天：有安排' : '忙碌',
-    start: block.start,
-    end: block.end,
-    allDay: block.allDay,
-    backgroundColor: tint(BUSY_COLOR, 0.22),
-    borderColor: BUSY_COLOR,
-    textColor: shade(BUSY_COLOR, 0.35),
-    classNames: ['is-busy'],
-    extendedProps: { block },
-  }
-}
-import { useIsNarrow, useIsTouch } from '../hooks/useMedia'
-import type { DateClickArg } from '@fullcalendar/interaction'
 
 type Props = { canEdit: boolean }
 
 const VIEW_KEY = 'tm.calendarView'
+const MODE_KEY = 'tm.calendarMode'
 const VIEWS = ['dayGridMonth', 'timeGridWeek', 'timeGridDay']
+const MODES: ViewMode[] = ['mine', 'shared', 'partner']
 
-// 記住上次看的是月／週／日（只存在這台裝置的瀏覽器）
-function loadView(): string {
+// 記住上次看的設定（只存在這台裝置的瀏覽器）
+function load<T extends string>(key: string, allowed: T[], fallback: T): T {
   try {
-    const v = localStorage.getItem(VIEW_KEY)
-    if (v && VIEWS.includes(v)) return v
+    const v = localStorage.getItem(key)
+    if (v && (allowed as string[]).includes(v)) return v as T
   } catch {
     // 無痕模式等情況讀不到，用預設值
   }
-  return 'dayGridMonth'
+  return fallback
 }
 
-function saveView(v: string) {
+function save(key: string, value: string) {
   try {
-    localStorage.setItem(VIEW_KEY, v)
+    localStorage.setItem(key, value)
   } catch {
     // 存不了也沒關係
   }
@@ -70,52 +56,66 @@ function saveView(v: string) {
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
+// 單筆項目的細節（給對方的個人行程用，只能看）
+function singleBlock(occ: Occurrence): BusyBlock {
+  const allDay = !occ.start_time
+  return {
+    allDay,
+    start: allDay ? occ.start_date : `${occ.start_date}T${occ.start_time!.slice(0, 5)}`,
+    end: allDay ? addDays(occ.end_date, 1) : `${occ.end_date}T${(occ.end_time ?? occ.start_time!).slice(0, 5)}`,
+    items: [occ],
+  }
+}
+
 export default function CalendarPage({ canEdit }: Props) {
+  const me = getCurrentUserId()
   const calendarRef = useRef<FullCalendar>(null)
   const [categories, setCategories] = useState<Category[] | null>(null)
-  const categoriesRef = useRef<Category[]>([])
-  const [view, setView] = useState(loadView)
+  const [members, setMembers] = useState<Member[]>([])
+  const [view, setView] = useState(() => load(VIEW_KEY, VIEWS, 'dayGridMonth'))
+  const [mode, setMode] = useState<ViewMode>(() => load(MODE_KEY, MODES, 'mine'))
   const [editing, setEditing] = useState<EditTarget | null>(null)
   const [sheetDate, setSheetDate] = useState<string | null>(null)
+  const [detail, setDetail] = useState<BusyBlock | null>(null)
   const [error, setError] = useState<string | null>(null)
   const isNarrow = useIsNarrow()
   const isTouch = useIsTouch()
-  // 只能看的人：預設只看空閒／忙碌；打開「顯示細節」才看到內容
-  const [showDetails, setShowDetails] = useState(false)
-  const busyModeRef = useRef(!canEdit)
-  busyModeRef.current = !canEdit && !showDetails
-  const [busyDetail, setBusyDetail] = useState<BusyBlock | null>(null)
+
+  // 行事曆元件讀資料時用的最新值
+  const ctx = useRef({ mode, me, members, categories: [] as Category[] })
+  ctx.current = { mode, me, members, categories: categories ?? [] }
+
+  const partner = findPartner(members, me)
+  const partnerName = partner ? memberBadge(partner).label : null
+  const activeMode: ViewMode = mode === 'partner' && !partner ? 'mine' : mode
 
   useEffect(() => {
-    calendarRef.current?.getApi().refetchEvents()
-  }, [showDetails])
-
-  useEffect(() => {
-    listCategories()
-      .then((cats) => {
-        categoriesRef.current = cats
+    Promise.all([listCategories(), listMembers()])
+      .then(([cats, mems]) => {
         setCategories(cats)
+        setMembers(mems)
       })
       .catch((e) => setError(errMsg(e)))
   }, [])
 
   const refetch = () => calendarRef.current?.getApi().refetchEvents()
 
+  // 換行事曆時重新畫
+  useEffect(() => {
+    refetch()
+  }, [activeMode, members])
+
   // 行事曆換到哪段日期，就去資料庫拿那段日期的項目
   const fetchEvents = useCallback(
-    (
-      info: EventSourceFuncArg,
-      success: (events: EventInput[]) => void,
-      failure: (error: Error) => void,
-    ) => {
+    (info: EventSourceFuncArg, success: (events: EventInput[]) => void, failure: (error: Error) => void) => {
       const from = toISODate(info.start)
       const to = addDays(toISODate(info.end), -1)
       listOccurrences(from, to)
         .then((occs) => {
           setError(null)
-          // 女友檢視（預設）：只顯示合併後的忙碌時段
-          if (busyModeRef.current) success(mergeBusy(occs).map(busyToEvent))
-          else success(occs.map((occ) => itemToEvent(occ, categoriesRef.current)))
+          const c = ctx.current
+          const m = c.mode === 'partner' && !findPartner(c.members, c.me) ? 'mine' : c.mode
+          success(buildViewEvents(occs, m, c.me, c.members, c.categories))
         })
         .catch((e) => {
           setError(errMsg(e))
@@ -125,37 +125,41 @@ export default function CalendarPage({ canEdit }: Props) {
     [],
   )
 
+  const newDefaults = (date: string) => ({
+    startDate: date,
+    calendar: activeMode === 'shared' ? ('shared' as const) : ('personal' as const),
+  })
+
+  // 電腦：拖一段時間或好幾天 → 直接新增
   function handleSelect(arg: DateSelectArg) {
     arg.view.calendar.unselect()
     if (!canEdit) return
-    setEditing({ kind: 'new', defaults: selectionToDefaults(arg.start, arg.end, arg.allDay) })
+    setEditing({ kind: 'new', defaults: { ...selectionToDefaults(arg.start, arg.end, arg.allDay), calendar: newDefaults('').calendar } })
+  }
+
+  // 點一下某天 → 先看這天的清單（電腦、手機都一樣）
+  function handleDateClick(arg: DateClickArg) {
+    setSheetDate(toISODate(arg.date))
   }
 
   function handleEventClick(arg: EventClickArg) {
     const block = arg.event.extendedProps.block as BusyBlock | undefined
     if (block) {
-      setBusyDetail(block)
+      setDetail(block)
       return
     }
     const occ = arg.event.extendedProps.item as Occurrence
-    if (canEdit) {
-      setEditing({ kind: 'occ', occ })
-    } else {
-      // 只能看：顯示這一筆的細節
-      const allDay = !occ.start_time
-      setBusyDetail({
-        allDay,
-        start: allDay ? occ.start_date : `${occ.start_date}T${occ.start_time!.slice(0, 5)}`,
-        end: allDay ? addDays(occ.end_date, 1) : `${occ.end_date}T${(occ.end_time ?? occ.start_time!).slice(0, 5)}`,
-        items: [occ],
-      })
-    }
+    if (canEdit && canEditItem(occ, me)) setEditing({ kind: 'occ', occ })
+    else setDetail(singleBlock(occ))
   }
 
-  // 拖拉移動或拉長：直接存回資料庫；失敗就還原
-  // 重複項目拖拉時，只移動這一次
+  // 拖拉移動或拉長：直接存回資料庫；失敗就還原。重複項目拖拉時只移動這一次
   async function handleEventChange(arg: EventChangeArg) {
-    const occ = arg.event.extendedProps.item as Occurrence
+    const occ = arg.event.extendedProps.item as Occurrence | undefined
+    if (!occ) {
+      arg.revert()
+      return
+    }
     const timing = eventToTiming(arg.event.start!, arg.event.end, arg.event.allDay)
     try {
       if (occ.series) await saveThisOccurrence(occ, { ...occurrenceToInput(occ), ...timing })
@@ -167,17 +171,16 @@ export default function CalendarPage({ canEdit }: Props) {
     }
   }
 
-  // 手機：點一下某天 → 從下方滑出這天的清單
-  function handleDateClick(arg: DateClickArg) {
-    if (!isTouch) return
-    setSheetDate(toISODate(arg.date))
-  }
-
   function handleDatesSet(arg: DatesSetArg) {
     if (arg.view.type !== view) {
       setView(arg.view.type)
-      saveView(arg.view.type)
+      save(VIEW_KEY, arg.view.type)
     }
+  }
+
+  function changeMode(m: ViewMode) {
+    setMode(m)
+    save(MODE_KEY, m)
   }
 
   if (!categories) {
@@ -185,36 +188,61 @@ export default function CalendarPage({ canEdit }: Props) {
   }
 
   const isTimeGrid = view.startsWith('timeGrid')
-  // 手機：月曆填滿畫面（扣掉上方工具列和下方分頁列）；電腦：月曆依內容自動長高
-  const height = isNarrow ? 'calc(100dvh - 150px)' : isTimeGrid ? 'calc(100vh - 190px)' : 'auto'
-  const openNew = (date: string) => setEditing({ kind: 'new', defaults: { startDate: date } })
+  // 手機：月曆填滿畫面（扣掉上方列、行事曆切換和下方分頁列）；電腦：月曆依內容自動長高
+  const height = isNarrow ? 'calc(100dvh - 196px)' : isTimeGrid ? 'calc(100vh - 230px)' : 'auto'
+  const openNew = (date: string) => setEditing({ kind: 'new', defaults: newDefaults(date) })
+
+  const modeButtons: { id: ViewMode; label: string }[] = [
+    { id: 'mine', label: '我的' },
+    { id: 'shared', label: '共用' },
+    ...(partner ? [{ id: 'partner' as const, label: `${partnerName}的` }] : []),
+  ]
 
   return (
     <section className="calendar-page">
-      {!isNarrow && (
-        <div className="page-title">
-          <h1>行事曆</h1>
-          {canEdit && (
-            <button className="btn-primary" onClick={() => openNew(todayISO())}>
-              ＋ 新增項目
+      <div className="cal-top">
+        <div className="seg cal-modes" role="tablist" aria-label="行事曆">
+          {modeButtons.map((b) => (
+            <button
+              key={b.id}
+              role="tab"
+              aria-selected={activeMode === b.id}
+              className={activeMode === b.id ? 'seg-btn active' : 'seg-btn'}
+              onClick={() => changeMode(b.id)}
+            >
+              {b.label}
             </button>
-          )}
+          ))}
         </div>
+        {!isNarrow && canEdit && (
+          <button className="btn-primary" onClick={() => openNew(todayISO())}>
+            ＋ 新增
+          </button>
+        )}
+      </div>
+
+      {activeMode === 'shared' && (
+        <p className="legend muted small">
+          {members
+            .filter((m) => m.role !== 'viewer')
+            .map((m) => {
+              const b = memberBadge(m)
+              return (
+                <span key={m.user_id} className="legend-item">
+                  <span className="dot" style={{ background: b.color }} />
+                  {b.label}
+                </span>
+              )
+            })}
+          <span className="legend-item">
+            <span className="dot legend-date" />
+            約會
+          </span>
+          <span>點一下可以看細節</span>
+        </p>
       )}
 
       {error && <p className="error">發生錯誤：{error}</p>}
-
-      {!canEdit && (
-        <div className="viewer-bar">
-          <span className="muted small">
-            {showDetails ? '正在顯示行程內容' : '灰色＝忙碌；點一下可以看是什麼'}
-          </span>
-          <label className="switch">
-            <input type="checkbox" checked={showDetails} onChange={(e) => setShowDetails(e.target.checked)} />
-            <span>顯示細節</span>
-          </label>
-        </div>
-      )}
 
       <div className="calendar-wrap">
         <FullCalendar
@@ -238,6 +266,7 @@ export default function CalendarPage({ canEdit }: Props) {
           events={fetchEvents}
           editable={canEdit && !isTouch}
           selectable={canEdit && !isTouch}
+          selectMinDistance={6}
           selectMirror
           select={handleSelect}
           dateClick={handleDateClick}
@@ -255,24 +284,28 @@ export default function CalendarPage({ canEdit }: Props) {
       </div>
 
       {isNarrow && canEdit && (
-        <button className="fab" onClick={() => openNew(todayISO())} aria-label="新增項目">
+        <button className="fab" onClick={() => openNew(todayISO())} aria-label="新增">
           ＋
         </button>
       )}
 
-      {busyDetail && (
-        <BusyDetail block={busyDetail} categories={categories} onClose={() => setBusyDetail(null)} />
-      )}
+      {detail && <BusyDetail block={detail} categories={categories} onClose={() => setDetail(null)} />}
 
       {sheetDate && (
         <DaySheet
           date={sheetDate}
+          mode={activeMode}
           categories={categories}
+          members={members}
           canEdit={canEdit}
           onClose={() => setSheetDate(null)}
           onOpen={(occ) => {
             setSheetDate(null)
             setEditing({ kind: 'occ', occ })
+          }}
+          onView={(occ) => {
+            setSheetDate(null)
+            setDetail(singleBlock(occ))
           }}
           onAdd={(date) => {
             setSheetDate(null)
@@ -282,12 +315,7 @@ export default function CalendarPage({ canEdit }: Props) {
       )}
 
       {editing && (
-        <OccurrenceEditor
-          target={editing}
-          categories={categories}
-          onClose={() => setEditing(null)}
-          onChanged={refetch}
-        />
+        <OccurrenceEditor target={editing} categories={categories} onClose={() => setEditing(null)} onChanged={refetch} />
       )}
     </section>
   )

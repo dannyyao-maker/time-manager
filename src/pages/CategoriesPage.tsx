@@ -6,21 +6,26 @@ import {
   countDeleteImpact,
   createCategory,
   createStarterCategories,
+  PARTNER_STARTER_CATEGORIES,
+  STARTER_CATEGORIES,
   deleteCategory,
   listCategories,
   topLevel,
   updateCategory,
 } from '../data/categories'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { getCurrentUserId } from '../lib/session'
 import ColorSwatches from '../components/ColorSwatches'
 
-type Props = { canEdit: boolean }
+type Props = { canEdit: boolean; isPartner?: boolean } // isPartner：女友（editor）
 
 type PendingDelete = { category: Category; items: number }
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-export default function CategoriesPage({ canEdit }: Props) {
+export default function CategoriesPage({ canEdit, isPartner }: Props) {
+  const me = getCurrentUserId()
+  const starter = isPartner ? PARTNER_STARTER_CATEGORIES : STARTER_CATEGORIES
   const [all, setAll] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +62,8 @@ export default function CategoriesPage({ canEdit }: Props) {
     }
   }
 
-  const categories = topLevel(all)
+  // 兩人各自有自己的類別：只顯示我的
+  const categories = topLevel(all).filter((c) => !c.owner_id || c.owner_id === me)
 
   function add() {
     const name = newName.trim()
@@ -131,10 +137,10 @@ export default function CategoriesPage({ canEdit }: Props) {
       {canEdit && categories.length === 0 && (
         <div className="empty-box">
           <p>還沒有任何類別。</p>
-          <button className="btn-secondary" onClick={() => run(createStarterCategories)} disabled={busy}>
-            一鍵建立提案裡的初始類別
+          <button className="btn-secondary" onClick={() => run(() => createStarterCategories(starter))} disabled={busy}>
+            一鍵建立初始類別
           </button>
-          <p className="muted small">研所課程、CG、DA、論文、約會、生活、其它重要</p>
+          <p className="muted small">{starter.join("、")}</p>
         </div>
       )}
 

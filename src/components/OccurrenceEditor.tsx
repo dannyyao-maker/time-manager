@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Category, Occurrence } from '../data/types'
+import type { CalendarKind, Category, Occurrence } from '../data/types'
 import { createItem, deleteItem, updateItem } from '../data/items'
 import { cancelThisOccurrence, saveThisOccurrence } from '../data/occurrences'
 import type { ItemDefaults } from '../lib/calendarEvents'
@@ -8,7 +8,9 @@ import { describeRepeat } from '../lib/recurrence'
 import ItemForm from './ItemForm'
 import Modal from './Modal'
 
-export type EditTarget = { kind: 'new'; defaults: ItemDefaults } | { kind: 'occ'; occ: Occurrence }
+export type EditTarget =
+  | { kind: 'new'; defaults: ItemDefaults & { calendar?: CalendarKind } }
+  | { kind: 'occ'; occ: Occurrence }
 
 type Props = {
   target: EditTarget

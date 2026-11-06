@@ -5,6 +5,8 @@ import { listOccurrences } from '../data/occurrences'
 import { addDays } from '../lib/calendarEvents'
 import { formatDateLabel, formatShortDate, formatTime, todayISO } from '../lib/dates'
 import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
+import { forMyLists } from '../lib/views'
+import { getCurrentUserId } from '../lib/session'
 
 type Props = { canEdit: boolean }
 
@@ -29,7 +31,7 @@ export default function ItemsPage({ canEdit }: Props) {
         listOccurrences(from, addDays(today, FUTURE_DAYS)),
         listCategories(),
       ])
-      setItems(its)
+      setItems(forMyLists(its, getCurrentUserId()))
       setCategories(cats)
       setError(null)
     } catch (e) {

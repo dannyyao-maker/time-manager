@@ -4,10 +4,12 @@ type Props = {
   title: string
   onClose: () => void
   children: ReactNode
+  bare?: boolean // true：不顯示預設的標題列（內容自己畫，例如新增頁）
+  className?: string
 }
 
 // 跳出視窗：按背景或 Esc 關閉
-export default function Modal({ title, onClose, children }: Props) {
+export default function Modal({ title, onClose, children, bare, className }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -19,18 +21,20 @@ export default function Modal({ title, onClose, children }: Props) {
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div
-        className="modal"
+        className={className ? `modal ${className}` : 'modal'}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
-          <h2>{title}</h2>
-          <button className="btn-icon" onClick={onClose} aria-label="關閉">
-            ✕
-          </button>
-        </div>
+        {!bare && (
+          <div className="modal-header">
+            <h2>{title}</h2>
+            <button className="btn-icon" onClick={onClose} aria-label="關閉">
+              ✕
+            </button>
+          </div>
+        )}
         {children}
       </div>
     </div>

@@ -21,7 +21,7 @@ export const PALETTE: { hex: string; name: string }[] = [
 export async function listCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from('categories')
-    .select('id, parent_id, name, color, sort_order')
+    .select('id, parent_id, name, color, sort_order, owner_id')
     .order('sort_order')
     .order('created_at')
   if (error) throw error
@@ -32,7 +32,7 @@ export async function createCategory(input: { name: string; color: string; sort_
   const { data, error } = await supabase
     .from('categories')
     .insert({ ...input, parent_id: null })
-    .select('id, parent_id, name, color, sort_order')
+    .select('id, parent_id, name, color, sort_order, owner_id')
     .single()
   if (error) throw error
   return data as Category
@@ -98,7 +98,7 @@ export function categoryLabel(categoryId: string | null, all: Category[]): strin
   return all.find((c) => c.id === categoryId)?.name ?? '未分類'
 }
 
-// 提案.md 裡的初始類別（第一次使用時可以一鍵建立）
+// 初始類別（第一次使用時可以一鍵建立）：我用提案.md 的，女友用她自己的四個
 export const STARTER_CATEGORIES = [
   '研所課程',
   'CG（政大管顧社）',
@@ -108,9 +108,10 @@ export const STARTER_CATEGORIES = [
   '生活',
   '其它重要',
 ]
+export const PARTNER_STARTER_CATEGORIES = ['上班', '自媒體', '有約', '其它']
 
-export async function createStarterCategories() {
-  for (const [i, name] of STARTER_CATEGORIES.entries()) {
+export async function createStarterCategories(names: string[] = STARTER_CATEGORIES) {
+  for (const [i, name] of names.entries()) {
     await createCategory({ name, color: PALETTE[i % PALETTE.length].hex, sort_order: i })
   }
 }

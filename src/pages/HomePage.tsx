@@ -91,7 +91,7 @@ export default function HomePage({ displayName, role }: Props) {
         {tab === 'calendar' && <CalendarPage canEdit={canEdit} />}
         {tab === 'daily' && <DailyPage canEdit={canEdit} />}
         {tab === 'items' && <ItemsPage canEdit={canEdit} />}
-        {tab === 'categories' && <CategoriesPage canEdit={canEdit} />}
+        {tab === 'categories' && <CategoriesPage canEdit={canEdit} isPartner={role === 'editor'} />}
       </main>
     </div>
   )

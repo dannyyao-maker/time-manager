@@ -6,6 +6,8 @@ import { listOccurrences, setOccurrenceDone } from '../data/occurrences'
 import { addDays } from '../lib/calendarEvents'
 import { formatDateLabel, formatShortDate, formatTime, todayISO } from '../lib/dates'
 import { progress, splitDaily } from '../lib/daily'
+import { forMyLists } from '../lib/views'
+import { getCurrentUserId } from '../lib/session'
 import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 
 type Props = { canEdit: boolean }
@@ -28,7 +30,7 @@ export default function DailyPage({ canEdit }: Props) {
   const reload = useCallback(async () => {
     try {
       const [its, cats] = await Promise.all([listOccurrences(date, date), listCategories()])
-      setItems(its)
+      setItems(forMyLists(its, getCurrentUserId()))
       setCategories(cats)
       setError(null)
     } catch (e) {

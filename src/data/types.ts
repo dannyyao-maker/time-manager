@@ -6,6 +6,7 @@ export type Category = {
   name: string
   color: string | null
   sort_order: number
+  owner_id?: string // 誰的類別（兩人各自有自己的類別）
 }
 
 export type RepeatFreq = 'daily' | 'weekly' | 'monthly'
@@ -24,6 +25,7 @@ export type Item = {
   repeat_freq: RepeatFreq | null
   repeat_until: string | null
   calendar?: CalendarKind // 第二版：個人或共用；舊資料沒有就當作個人
+  owner_id?: string // 誰建立的（個人行程的擁有者）
 }
 
 // personal = 個人行程（只有擁有者能改）；shared = 共用（兩人都能改、不分類）

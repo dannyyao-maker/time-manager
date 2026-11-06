@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { setCurrentUserId } from '../lib/session'
 
 export type Role = 'owner' | 'editor' | 'viewer'
 
@@ -25,6 +26,7 @@ export function useAuth(): AuthState {
   }, [])
 
   const userId = session?.user.id
+  setCurrentUserId(userId ?? null)
 
   useEffect(() => {
     if (session === undefined) return
