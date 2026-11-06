@@ -74,6 +74,21 @@ export function resolveColor(categoryId: string | null, all: Category[]): string
   return parent?.color ?? UNCATEGORIZED_COLOR
 }
 
+// 共用項目（第二版）：不分類，統一用共用色
+export const SHARED_COLOR = '#E0577F'
+export const SHARED_LABEL = '共用'
+
+type Colorable = { category_id: string | null; calendar?: 'personal' | 'shared' }
+
+// 項目的顏色：共用項目用共用色，個人行程看類別
+export function itemColor(item: Colorable, all: Category[]): string {
+  return item.calendar === 'shared' ? SHARED_COLOR : resolveColor(item.category_id, all)
+}
+
+export function itemLabel(item: Colorable, all: Category[]): string {
+  return item.calendar === 'shared' ? SHARED_LABEL : categoryLabel(item.category_id, all)
+}
+
 export function categoryLabel(categoryId: string | null, all: Category[]): string {
   if (!categoryId) return '未分類'
   return all.find((c) => c.id === categoryId)?.name ?? '未分類'

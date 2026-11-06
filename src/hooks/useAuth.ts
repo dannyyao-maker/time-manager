@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
-export type Role = 'owner' | 'viewer'
+export type Role = 'owner' | 'editor' | 'viewer'
 
 export type AuthState =
   | { status: 'loading' }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import type { Category, Occurrence } from '../data/types'
-import { categoryLabel, listCategories, resolveColor } from '../data/categories'
+import { itemLabel, listCategories, itemColor } from '../data/categories'
 import { createItem } from '../data/items'
 import { listOccurrences, setOccurrenceDone } from '../data/occurrences'
 import { addDays } from '../lib/calendarEvents'
@@ -86,7 +86,7 @@ export default function DailyPage({ canEdit }: Props) {
   const { done, total } = progress([...allDay, ...timed])
 
   function renderRow(item: Occurrence) {
-    const color = resolveColor(item.category_id, categories)
+    const color = itemColor(item, categories)
     const multiDay = item.end_date !== item.start_date
     let time = '整天'
     if (item.start_time && item.start_date === date) {
@@ -115,7 +115,7 @@ export default function DailyPage({ canEdit }: Props) {
           <span className="item-title">{item.title}</span>
           <span className="item-meta">
             <span className="dot" style={{ background: color }} />
-            {categoryLabel(item.category_id, categories)}
+            {itemLabel(item, categories)}
             {multiDay && ` · ${formatShortDate(item.start_date)}–${formatShortDate(item.end_date)}`}
             {item.series && ' · 🔁 重複'}
             {item.location && ` · 📍${item.location}`}

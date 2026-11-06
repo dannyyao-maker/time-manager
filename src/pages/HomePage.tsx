@@ -33,7 +33,8 @@ function loadTab(): Tab {
 
 // 登入後的主畫面：上方導覽列＋目前的頁面
 export default function HomePage({ displayName, role }: Props) {
-  const canEdit = role === 'owner'
+  // owner（我）和 editor（女友）都能編輯；viewer 只能看
+  const canEdit = role === 'owner' || role === 'editor'
   // 只能看的人只有行事曆一頁（畫面乾淨）
   const [tab, setTab] = useState<Tab>(() => (canEdit ? loadTab() : 'calendar'))
   const [showBackup, setShowBackup] = useState(false)

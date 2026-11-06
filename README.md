@@ -63,9 +63,9 @@ Supabase
 
 | 資料表 | 內容 |
 | --- | --- |
-| `members` | 誰能進來、角色（owner 可編輯／viewer 只能看）；只在後台設定 |
+| `members` | 誰能進來、角色（owner／editor 可編輯、viewer 只能看）；只在後台設定 |
 | `categories` | 類別名稱、顏色 |
-| `items` | 項目；重複項目只存一筆規則（每天／每週／每月＋結束日期） |
+| `items` | 項目；屬於個人或共用行事曆；重複項目只存一筆規則（每天／每週／每月＋結束日期） |
 | `occurrence_overrides` | 重複項目的「某一次」：停課、改時間、這一次勾完成 |
 
 重複項目不會被拆成幾十筆存起來，而是畫面依規則即時算出每一次，再套用單次覆寫（`src/lib/recurrence.ts`）。
@@ -77,7 +77,7 @@ Supabase
   - 不在成員名單上的人：就算登入，也讀到 0 筆。
   - viewer：可以讀，但新增／修改／刪除一律被資料庫拒絕。
   - owner：只能修改自己的資料。
-- `supabase/tests/rls_test.sql` 模擬沒登入、陌生人、viewer、owner 四種身分，10 項權限測試全部通過。
+- `supabase/tests/rls_test.sql` 模擬沒登入、陌生人、viewer、editor、owner 五種身分，21 項權限測試（例如「女友不能改我的個人行程，但能改共用項目」）。
 - 網站裡的 Supabase「公開金鑰」設計上可以公開：它只能以訪客身分發出請求，每個請求都還要過 RLS。能繞過 RLS 的 secret key 從不出現在網站或 repo。
 - 每次 commit 前自動執行 `scripts/check-secrets.mjs`，擋下 Gmail 地址、金鑰和環境變數檔。
 
@@ -92,7 +92,7 @@ npm run dev                  # 打開 http://localhost:5173
 npm test                     # 執行自動測試
 ```
 
-資料庫：依序在 Supabase SQL Editor 執行 `supabase/migrations/` 裡的 `0001`～`0003`，再用 `supabase/setup/add_member.example.sql` 把自己加進成員名單。
+資料庫：依序在 Supabase SQL Editor 執行 `supabase/migrations/` 裡的 `0001`～`0004`，再用 `supabase/setup/add_member.example.sql` 把自己加進成員名單。
 
 ## 開發過程
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Category, Occurrence } from '../data/types'
-import { categoryLabel, listCategories, resolveColor } from '../data/categories'
+import { itemLabel, listCategories, itemColor } from '../data/categories'
 import { listOccurrences } from '../data/occurrences'
 import { addDays } from '../lib/calendarEvents'
 import { formatDateLabel, formatShortDate, formatTime, todayISO } from '../lib/dates'
@@ -95,7 +95,7 @@ export default function ItemsPage({ canEdit }: Props) {
             {date === today && <span className="badge">今天</span>}
           </h3>
           {dayItems.map((item) => {
-            const color = resolveColor(item.category_id, categories)
+            const color = itemColor(item, categories)
             const multiDay = item.end_date !== item.start_date
             return (
               <button
@@ -113,7 +113,7 @@ export default function ItemsPage({ canEdit }: Props) {
                   </span>
                   <span className="item-meta">
                     <span className="dot" style={{ background: color }} />
-                    {categoryLabel(item.category_id, categories)}
+                    {itemLabel(item, categories)}
                     {multiDay && ` · ${formatShortDate(item.start_date)}–${formatShortDate(item.end_date)}`}
                     {item.series && ' · 🔁 重複'}
                     {item.location && ` · 📍${item.location}`}

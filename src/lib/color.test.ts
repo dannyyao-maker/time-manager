@@ -26,3 +26,14 @@ describe('color：標籤的淡底色和深色字', () => {
     expect(e.textColor).toBe(shade('#E2534B', 0.28))
   })
 })
+
+describe('共用項目的顏色和標籤', async () => {
+  const { itemColor, itemLabel, SHARED_COLOR } = await import('../data/categories')
+  const cats = [{ id: 'c', parent_id: null, name: '約會', color: '#3D8FE0', sort_order: 0 }]
+  it('共用項目用共用色、標籤寫「共用」；個人行程照類別', () => {
+    expect(itemColor({ category_id: null, calendar: 'shared' }, cats)).toBe(SHARED_COLOR)
+    expect(itemLabel({ category_id: null, calendar: 'shared' }, cats)).toBe('共用')
+    expect(itemColor({ category_id: 'c', calendar: 'personal' }, cats)).toBe('#3D8FE0')
+    expect(itemLabel({ category_id: 'c' }, cats)).toBe('約會')
+  })
+})

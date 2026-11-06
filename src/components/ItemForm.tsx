@@ -213,18 +213,22 @@ export default function ItemForm({ item, mode = 'item', defaults, categories, on
           </div>
         )}
 
-        <label>
-          類別
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={isOccurrence}>
-            <option value="">未分類</option>
-            {options.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-          {isOccurrence && <span className="muted small">類別要改整串</span>}
-        </label>
+        {item?.calendar === 'shared' ? (
+          <p className="muted small">共用項目不分類（統一用共用色）。</p>
+        ) : (
+          <label>
+            類別
+            <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={isOccurrence}>
+              <option value="">未分類</option>
+              {options.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {isOccurrence && <span className="muted small">類別要改整串</span>}
+          </label>
+        )}
 
         <label>
           地點（選填）

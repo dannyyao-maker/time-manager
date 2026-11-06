@@ -38,14 +38,15 @@ function cell(v: unknown): string {
 
 export function backupToCsv(b: Backup): string {
   const catName = new Map(b.categories.map((c) => [c.id, c.name]))
-  const header = ['開始日期', '結束日期', '開始時間', '結束時間', '標題', '類別', '地點', '備註', '重複', '重複到', '已完成']
+  const header = ['行事曆', '開始日期', '結束日期', '開始時間', '結束時間', '標題', '類別', '地點', '備註', '重複', '重複到', '已完成']
   const rows = b.items.map((i) => [
+    i.calendar === 'shared' ? '共用' : '個人',
     i.start_date,
     i.end_date,
     i.start_time?.slice(0, 5) ?? '',
     i.end_time?.slice(0, 5) ?? '',
     i.title,
-    i.category_id ? catName.get(i.category_id) ?? '' : '未分類',
+    i.calendar === 'shared' ? '' : i.category_id ? catName.get(i.category_id) ?? '' : '未分類',
     i.location,
     i.note,
     i.repeat_freq ? REPEAT_LABEL[i.repeat_freq] : '',
@@ -53,7 +54,7 @@ export function backupToCsv(b: Backup): string {
     i.repeat_freq ? '' : i.is_done ? '是' : '',
   ])
   // 開頭加 BOM，Excel 打開中文才不會變亂碼
-  return '﻿' + [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
+  return '\uFEFF' + [header, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
 }
 
 export function downloadFile(name: string, content: string, type: string) {

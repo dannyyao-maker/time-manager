@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Category, Occurrence } from '../data/types'
-import { categoryLabel, resolveColor } from '../data/categories'
+import { itemLabel, itemColor } from '../data/categories'
 import { listOccurrences } from '../data/occurrences'
 import { formatDateLabel, formatTime } from '../lib/dates'
 import { splitDaily } from '../lib/daily'
@@ -41,7 +41,7 @@ export default function DaySheet({ date, categories, canEdit, onClose, onOpen, o
       {items && ordered.length === 0 && <p className="muted sheet-empty">這天沒有項目。</p>}
       <ul className="sheet-list">
         {ordered.map((occ) => {
-          const color = resolveColor(occ.category_id, categories)
+          const color = itemColor(occ, categories)
           const timed = occ.start_time && occ.start_date === date
           return (
             <li key={occ.key}>
@@ -60,7 +60,7 @@ export default function DaySheet({ date, categories, canEdit, onClose, onOpen, o
                 <span className="sheet-main">
                   <span className="item-title">{occ.title}</span>
                   <span className="muted small">
-                    {categoryLabel(occ.category_id, categories)}
+                    {itemLabel(occ, categories)}
                     {occ.series && ' · 🔁'}
                     {occ.location && ` · ${occ.location}`}
                   </span>

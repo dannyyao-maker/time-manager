@@ -2,7 +2,7 @@
 // 行事曆元件（FullCalendar）的規則：整天事件的 end 是「結束日的隔天」（不包含）
 
 import type { Category, Item, ItemInput } from '../data/types'
-import { resolveColor } from '../data/categories'
+import { itemColor } from '../data/categories'
 import { parseISODate, toISODate } from './dates'
 import { shade, tint } from './color'
 
@@ -29,7 +29,7 @@ const hhmm = (t: string) => t.slice(0, 5)
 
 // item 可以是一般項目，或重複項目算出來的其中一次（有 key）
 export function itemToEvent(item: Item & { key?: string }, categories: Category[]): CalendarEvent {
-  const color = resolveColor(item.category_id, categories)
+  const color = itemColor(item, categories)
   const base = {
     id: item.key ?? item.id,
     title: item.location ? `${item.title}｜${item.location}` : item.title,

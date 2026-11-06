@@ -23,7 +23,11 @@ export type Item = {
   location: string | null
   repeat_freq: RepeatFreq | null
   repeat_until: string | null
+  calendar?: CalendarKind // 第二版：個人或共用；舊資料沒有就當作個人
 }
+
+// personal = 個人行程（只有擁有者能改）；shared = 共用（兩人都能改、不分類）
+export type CalendarKind = 'personal' | 'shared'
 
 // 表單送出的內容（id、重複規則另外處理）
 export type ItemInput = {
@@ -38,6 +42,7 @@ export type ItemInput = {
   is_done?: boolean // 不給 = 不改（新增時預設未完成）
   repeat_freq?: RepeatFreq | null // 不給 = 不改
   repeat_until?: string | null
+  calendar?: CalendarKind // 不給 = 不改（新增時預設個人）
 }
 
 // 重複項目的「單次覆寫」：對應 occurrence_overrides 表

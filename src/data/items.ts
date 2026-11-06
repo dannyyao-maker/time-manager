@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase'
 import type { Item, ItemInput } from './types'
 
 const COLUMNS =
-  'id, title, start_date, end_date, start_time, end_time, is_done, category_id, note, location, repeat_freq, repeat_until'
+  'id, title, start_date, end_date, start_time, end_time, is_done, category_id, note, location, repeat_freq, repeat_until, calendar'
 
 // 讀取請用 occurrences.ts 的 listOccurrences（會展開重複項目）；這裡只負責寫入
 
