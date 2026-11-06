@@ -17,6 +17,7 @@ const backup: Backup = {
     },
   ],
   occurrence_overrides: [],
+  memos: [],
 }
 
 describe('backupToCsv：給 Excel 看的 CSV', () => {

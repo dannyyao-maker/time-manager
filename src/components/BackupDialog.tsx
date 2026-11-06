@@ -20,7 +20,7 @@ export default function BackupDialog({ onClose }: Props) {
       const stamp = todayISO()
       downloadFile(`time-manager-備份-${stamp}.json`, JSON.stringify(b, null, 2), 'application/json')
       downloadFile(`time-manager-項目-${stamp}.csv`, backupToCsv(b), 'text/csv;charset=utf-8')
-      setMessage(`已下載：${b.items.length} 筆項目、${b.categories.length} 個類別、${b.occurrence_overrides.length} 筆單次修改。`)
+      setMessage(`已下載：${b.items.length} 筆項目、${b.categories.length} 個類別、${b.occurrence_overrides.length} 筆單次修改、${b.memos.length} 筆備忘錄。`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -33,7 +33,7 @@ export default function BackupDialog({ onClose }: Props) {
       <p>會下載兩個檔案：</p>
       <ul className="backup-list">
         <li>
-          <strong>.json</strong>：完整備份（項目、類別、重複項目的單次修改），之後可以用來還原。
+          <strong>.json</strong>：完整備份（項目、類別、重複項目的單次修改、備忘錄），之後可以用來還原。
         </li>
         <li>
           <strong>.csv</strong>：用 Excel 打開就能看的項目清單。

@@ -32,12 +32,13 @@ export function itemToEvent(item: Item & { key?: string }, categories: Category[
   const color = itemColor(item, categories)
   const base = {
     id: item.key ?? item.id,
-    title: item.location ? `${item.title}｜${item.location}` : item.title,
+    title: (item.is_task && !item.start_time ? (item.is_done ? '☑ ' : '☐ ') : '') +
+      (item.location ? `${item.title}｜${item.location}` : item.title),
     // 標籤樣式：淡底色、同色系深一點的字；borderColor 給週曆左邊的色條用
     backgroundColor: tint(color, 0.18),
     borderColor: color,
     textColor: shade(color, 0.28),
-    classNames: item.is_done ? ['is-done'] : [],
+    classNames: [...(item.is_done ? ['is-done'] : []), ...(item.is_task && !item.start_time ? ['is-task'] : [])],
     extendedProps: { item },
   }
 

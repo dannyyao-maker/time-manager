@@ -12,7 +12,7 @@ function occ(key: string, patch: Partial<Occurrence>): Occurrence {
 
 const day = (occs: Occurrence[]) => dayAvailability(occs, '2026-11-10')
 
-describe('可約的判斷：12:00–22:00 空的時間加起來 ≥ 5 小時', () => {
+describe('可約的判斷：12:00–22:00 有一段連續 ≥ 5 小時的空檔', () => {
   it('沒有任何安排：10 小時，可約', () => {
     const d = day([])
     expect(slotsText(d)).toBe('12:00–22:00')
@@ -34,12 +34,20 @@ describe('可約的判斷：12:00–22:00 空的時間加起來 ≥ 5 小時', (
     expect(day([occ('上班', { start_time: '09:00:00', end_time: '17:00:00' })]).available).toBe(true)
   })
 
-  it('空檔不用連續，加起來就算：12–15 ＋ 18–20 = 5 小時', () => {
+  it('要連續：12–15 ＋ 18–20 加起來雖然 5 小時，但最長只有 3 小時，不可約', () => {
     const d = day([
       occ('a', { start_time: '15:00:00', end_time: '18:00:00' }),
       occ('b', { start_time: '20:00:00', end_time: '23:00:00' }),
     ])
     expect(slotsText(d)).toBe('12:00–15:00、18:00–20:00')
+    expect(d.totalMinutes).toBe(300)
+    expect(d.longestMinutes).toBe(180)
+    expect(d.available).toBe(false)
+  })
+
+  it('中間有一小段事情，但另一段連續 5 小時：可約', () => {
+    const d = day([occ('a', { start_time: '12:30:00', end_time: '13:30:00' })])
+    expect(d.longestMinutes).toBe(510)
     expect(d.available).toBe(true)
   })
 
@@ -49,9 +57,15 @@ describe('可約的判斷：12:00–22:00 空的時間加起來 ≥ 5 小時', (
     expect(d.available).toBe(false)
   })
 
-  it('單日的整天項目（待辦）不算忙；跨好幾天的整天項目（回家）整天都算忙', () => {
-    expect(day([occ('繳費', {})]).available).toBe(true)
+  it('整天的行程（單日或跨好幾天）：那天不可約', () => {
+    expect(day([occ('宜蘭', {})]).available).toBe(false)
     expect(day([occ('回家', { start_date: '2026-11-09', end_date: '2026-11-11' })]).totalMinutes).toBe(0)
+  })
+
+  it('待辦（checkbox）不算行程：不影響可約', () => {
+    const d = day([occ('繳費', { is_task: true })])
+    expect(d.totalMinutes).toBe(600)
+    expect(d.available).toBe(true)
   })
 
   it('沒寫結束時間：當作 1 小時', () => {

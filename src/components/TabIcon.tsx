@@ -1,5 +1,5 @@
 // 分頁圖示（簡單的線條圖，跟著文字顏色變化）
-type Props = { name: 'calendar' | 'daily' | 'items' | 'categories' }
+type Props = { name: 'calendar' | 'daily' | 'memo' | 'items' | 'categories' | 'settings' }
 
 export default function TabIcon({ name }: Props) {
   const common = {
@@ -35,6 +35,20 @@ export default function TabIcon({ name }: Props) {
           <circle cx="4.5" cy="6" r="1" />
           <circle cx="4.5" cy="12" r="1" />
           <circle cx="4.5" cy="18" r="1" />
+        </svg>
+      )
+    case 'memo':
+      return (
+        <svg {...common}>
+          <path d="M6 3.5h9l4 4V20a.5.5 0 0 1-.5.5h-12.5a.5.5 0 0 1-.5-.5V4a.5.5 0 0 1 .5-.5z" />
+          <path d="M14.5 3.5V8h4.5M8.5 12.5h7M8.5 16h5" />
+        </svg>
+      )
+    case 'settings':
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7" />
         </svg>
       )
     case 'categories':

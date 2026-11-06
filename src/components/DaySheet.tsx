@@ -58,9 +58,9 @@ export default function DaySheet({ date, mode, showFree, categories, members, ca
       {free && (
         <p className={free.available ? 'free-note' : 'free-note none'}>
           {free.available
-            ? `可約・12–22 點共空 ${hoursText(free.totalMinutes)}：${slotsText(free)}`
+            ? `可約・12–22 點最長連續空 ${hoursText(free.longestMinutes)}：${slotsText(free)}`
             : free.totalMinutes > 0
-              ? `12–22 點只空 ${hoursText(free.totalMinutes)}（不到 5 小時）：${slotsText(free)}`
+              ? `12–22 點最長只連續空 ${hoursText(free.longestMinutes)}（不到 5 小時）：${slotsText(free)}`
               : '12–22 點沒有空檔'}
         </p>
       )}

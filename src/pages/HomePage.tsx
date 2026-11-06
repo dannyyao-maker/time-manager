@@ -2,29 +2,31 @@ import { useState } from 'react'
 import { signOut, type Role } from '../hooks/useAuth'
 import CalendarPage from './CalendarPage'
 import DailyPage from './DailyPage'
+import MemoPage from './MemoPage'
 import ItemsPage from './ItemsPage'
-import CategoriesPage from './CategoriesPage'
+import SettingsPage from './SettingsPage'
 import TabIcon from '../components/TabIcon'
-import BackupDialog from '../components/BackupDialog'
 
 type Props = { displayName: string; role: Role }
 
-type Tab = 'calendar' | 'daily' | 'items' | 'categories'
+// 下方分頁維持 4 個；類別和備份移到右上角的「設定」
+type Tab = 'calendar' | 'daily' | 'memo' | 'items' | 'settings'
 
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: Exclude<Tab, 'settings'>; label: string }[] = [
   { id: 'calendar', label: '行事曆' },
   { id: 'daily', label: '每日清單' },
+  { id: 'memo', label: '備忘錄' },
   { id: 'items', label: '列表' },
-  { id: 'categories', label: '類別' },
 ]
 
 const TAB_KEY = 'tm.tab'
+const ALL_TABS: Tab[] = ['calendar', 'daily', 'memo', 'items', 'settings']
 
 // 記住上次停在哪一頁（只存在這台裝置的瀏覽器）
 function loadTab(): Tab {
   try {
     const t = localStorage.getItem(TAB_KEY)
-    if (TABS.some((x) => x.id === t)) return t as Tab
+    if (t && (ALL_TABS as string[]).includes(t)) return t as Tab
   } catch {
     // 讀不到就用預設
   }
@@ -37,7 +39,6 @@ export default function HomePage({ displayName, role }: Props) {
   const canEdit = role === 'owner' || role === 'editor'
   // 只能看的人只有行事曆一頁（畫面乾淨）
   const [tab, setTab] = useState<Tab>(() => (canEdit ? loadTab() : 'calendar'))
-  const [showBackup, setShowBackup] = useState(false)
 
   function changeTab(t: Tab) {
     setTab(t)
@@ -75,8 +76,13 @@ export default function HomePage({ displayName, role }: Props) {
             {!canEdit && <span className="badge">只能看</span>}
           </span>
           {canEdit && (
-            <button className="btn-ghost btn-small" onClick={() => setShowBackup(true)}>
-              備份
+            <button
+              className={tab === 'settings' ? 'btn-icon settings-btn active' : 'btn-icon settings-btn'}
+              onClick={() => changeTab('settings')}
+              aria-label="設定（類別、備份）"
+              title="設定（類別、備份）"
+            >
+              <TabIcon name="settings" />
             </button>
           )}
           <button className="btn-secondary btn-small" onClick={() => signOut()}>
@@ -85,13 +91,12 @@ export default function HomePage({ displayName, role }: Props) {
         </div>
       </header>
 
-      {showBackup && <BackupDialog onClose={() => setShowBackup(false)} />}
-
       <main className={canEdit ? 'content' : 'content viewer'}>
         {tab === 'calendar' && <CalendarPage canEdit={canEdit} />}
         {tab === 'daily' && <DailyPage canEdit={canEdit} />}
+        {tab === 'memo' && <MemoPage canEdit={canEdit} />}
         {tab === 'items' && <ItemsPage canEdit={canEdit} />}
-        {tab === 'categories' && <CategoriesPage canEdit={canEdit} isPartner={role === 'editor'} />}
+        {tab === 'settings' && <SettingsPage canEdit={canEdit} isPartner={role === 'editor'} />}
       </main>
     </div>
   )

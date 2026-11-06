@@ -183,6 +183,18 @@ describe('itemToInput', () => {
   })
 })
 
+describe('待辦在行事曆上的樣式', () => {
+  it('前面加勾選框、加上 is-task', () => {
+    const e = itemToEvent(makeItem({ title: '繳費', is_task: true }), cats)
+    expect(e.title).toBe('☐ 繳費')
+    expect(e.classNames).toContain('is-task')
+    expect(itemToEvent(makeItem({ title: '繳費', is_task: true, is_done: true }), cats).title).toBe('☑ 繳費')
+  })
+  it('一般整天行程沒有勾選框', () => {
+    expect(itemToEvent(makeItem({ title: '回家' }), cats).title).toBe('回家')
+  })
+})
+
 describe('完成狀態在行事曆上的樣式', () => {
   it('完成的項目加上 is-done（畫刪除線、變淡）', () => {
     expect(itemToEvent(makeItem({ is_done: true }), cats).classNames).toEqual(['is-done'])

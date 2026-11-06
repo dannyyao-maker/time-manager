@@ -33,6 +33,19 @@ describe('三個行事曆各顯示什麼', () => {
   })
 })
 
+describe('待辦（checkbox）', () => {
+  const myTask = { ...occ('繳費', ME, 'personal'), is_task: true }
+  const herTask = { ...occ('買菜', HER, 'personal'), is_task: true }
+  it('只在自己的「我的」看得到；共用和對方的都看不到，也不會變成忙碌', () => {
+    expect(['mine', 'shared', 'partner'].map((m) => visibility(myTask, m as never, ME))).toEqual(['full', 'hidden', 'hidden'])
+    expect(['mine', 'shared', 'partner'].map((m) => visibility(herTask, m as never, ME))).toEqual(['hidden', 'hidden', 'hidden'])
+  })
+  it('有寫時間的就不是待辦，照一般行程顯示', () => {
+    const timed = { ...myTask, start_time: '10:00:00' }
+    expect(visibility(timed, 'shared', ME)).toBe('busy')
+  })
+})
+
 describe('誰能改', () => {
   it('約會兩人都能改；個人行程只有自己能改', () => {
     expect(canEditItem(date, HER)).toBe(true)

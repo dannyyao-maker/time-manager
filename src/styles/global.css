@@ -1063,6 +1063,14 @@ button.item-row:hover:not(:disabled) {
   cursor: pointer;
 }
 
+/* 待辦（checkbox）：白底、虛線框，看起來不像整天的行程 */
+.calendar-wrap .fc .fc-daygrid-event.is-task {
+  background: var(--surface) !important;
+  border: 1px dashed var(--line-strong) !important;
+  color: var(--ink) !important;
+  font-weight: 600;
+}
+
 /* 已完成的項目：變淡、畫刪除線 */
 .calendar-wrap .fc-event.is-done {
   opacity: 0.45;
@@ -1632,6 +1640,104 @@ textarea.tt-input {
 
 .mini-day:hover:not(:disabled):not(.selected) {
   background: #efe8e1;
+}
+
+/* ---------- 備忘錄 ---------- */
+
+.memo-intro {
+  margin: -8px 0 14px;
+}
+
+.memo-add {
+  margin-bottom: 14px;
+}
+
+.memo-notice {
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+
+.memo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.memo-row {
+  padding: 10px 14px;
+  background: var(--surface);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+.memo-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.memo-text {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.memo-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.memo-actions .chip {
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+}
+
+.memo-delete {
+  font-size: 1rem;
+}
+
+.memo-schedule {
+  margin-top: 8px;
+}
+
+.memo-schedule p {
+  margin: 0 0 4px;
+}
+
+/* ---------- 設定 ---------- */
+
+.settings-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  color: var(--muted);
+}
+
+.settings-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.settings-section {
+  margin-top: 32px;
+}
+
+.settings-section h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-num);
+  font-size: 1.2rem;
+  font-weight: 800;
 }
 
 /* ---------- 手機 ---------- */

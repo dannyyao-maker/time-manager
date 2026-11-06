@@ -171,7 +171,7 @@ export default function CalendarPage({ canEdit }: Props) {
           const c = ctx.current
           const m = c.mode === 'partner' && !findPartner(c.members, c.me) ? 'mine' : c.mode
           const events = buildViewEvents(occs, m, c.me, c.members, c.categories)
-          // 共用行事曆：標出可約的日子（12:00–22:00 兩人都空的時間加起來 ≥ 5 小時）
+          // 共用行事曆：標出可約的日子（12:00–22:00 有一段連續 5 小時兩人都沒安排）
           const days = m === 'shared' && c.showFree ? availabilityRange(occs, from, to) : []
           availableDays.current = new Set(days.filter((d) => d.available).map((d) => d.date))
           // 綠色空檔一律放進去（月曆會用 CSS 藏起來、改顯示「可約」標籤）：
@@ -303,7 +303,7 @@ export default function CalendarPage({ canEdit }: Props) {
           </span>
           <span className="legend-item">
             <span className="legend-free">可約</span>
-            12–22 點空滿 5 小時
+            12–22 點連續空 5 小時
           </span>
           <label className="switch legend-switch">
             <input
@@ -328,7 +328,7 @@ export default function CalendarPage({ canEdit }: Props) {
             upcoming.map((d) => (
               <button key={d.date} className="upcoming-day" onClick={() => setSheetDate(d.date)} title={slotsText(d)}>
                 <strong>{chipDate(d.date)}</strong>
-                <span>{hoursText(d.totalMinutes)}</span>
+                <span>連續 {hoursText(d.longestMinutes)}</span>
               </button>
             ))
           )}

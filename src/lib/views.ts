@@ -19,7 +19,14 @@ export function isMine(o: { owner_id?: string }, me: string | null): boolean {
   return !o.owner_id || o.owner_id === me
 }
 
+// 待辦（checkbox、沒有時間）：不算行程
+export function isTask(o: { is_task?: boolean; start_time: string | null }): boolean {
+  return !!o.is_task && !o.start_time
+}
+
 export function visibility(o: Occurrence, mode: ViewMode, me: string | null): Visibility {
+  // 待辦只在自己的「我的」行事曆看得到；不會變成忙碌
+  if (isTask(o)) return mode === 'mine' && isMine(o, me) ? 'full' : 'hidden'
   if (isShared(o)) return 'full'
   const mine = isMine(o, me)
   if (mode === 'mine') return mine ? 'full' : 'hidden'

@@ -1,18 +1,18 @@
 // 共同空檔：兩個人都沒有安排的時段（只在共用行事曆顯示）
 //
-// 規則（2026-11-07 調整）：
+// 規則（2026-11-07 第二次調整）：
 //   - 只看每天 12:00–22:00（中午以前、十點以後不算）
-//   - 這段時間裡兩人都沒安排的時間「加起來」滿 5 小時（含），這天就算「可約」
+//   - 這段時間裡有一段「連續」5 小時（含）兩人都沒安排，這天就算「可約」
 //   - 有時間的項目都算忙（兩人的個人行程、已經排好的約會都算）
-//   - 跨好幾天的整天項目（例如回家、日本行）整天都算忙
-//   - 單日的整天項目不算忙（通常是待辦，例如繳費、加退選）
+//   - 整天的行程（例如回家、日本行）：那天整天都算忙 → 不可約
+//   - 待辦（checkbox）不算行程，不影響可約
 //   - 沒寫結束時間的，當作佔 1 小時
 
 import type { Occurrence } from '../data/types'
 import { addDaysISO, diffDays } from './recurrence'
 
 export const FREE_WINDOW = { startMinute: 12 * 60, endMinute: 22 * 60 }
-export const AVAILABLE_MINUTES = 5 * 60 // 一天至少空這麼久才算「可約」
+export const AVAILABLE_MINUTES = 5 * 60 // 一天至少要有一段連續空這麼久，才算「可約」
 
 export type FreeSlot = { date: string; start: string; end: string; minutes: number } // start／end：HH:MM
 
@@ -20,7 +20,8 @@ export type DayAvailability = {
   date: string
   slots: FreeSlot[] // 這天 12:00–22:00 的所有空檔
   totalMinutes: number // 空檔加起來幾分鐘
-  available: boolean // 是否「可約」（加起來 ≥ 5 小時）
+  longestMinutes: number // 最長的一段連續空檔幾分鐘
+  available: boolean // 是否「可約」（有一段連續 ≥ 5 小時）
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -34,8 +35,8 @@ const toMin = (t: string) => {
 function busyOnDay(o: Occurrence, day: string): [number, number] | null {
   if (day < o.start_date || day > o.end_date) return null
   if (!o.start_time) {
-    // 整天：跨好幾天才算忙
-    return o.end_date !== o.start_date ? [0, 24 * 60] : null
+    // 待辦不算行程；整天的行程那天整天都算忙
+    return o.is_task ? null : [0, 24 * 60]
   }
   const dayOffset = diffDays(o.start_date, day) * 24 * 60 // 這天相對於開始那天差幾分鐘
   const start = toMin(o.start_time) - dayOffset
@@ -69,7 +70,8 @@ export function dayAvailability(occs: Occurrence[], day: string): DayAvailabilit
   }
   if (cursor < FREE_WINDOW.endMinute) push(cursor, FREE_WINDOW.endMinute)
   const totalMinutes = slots.reduce((sum, s) => sum + s.minutes, 0)
-  return { date: day, slots, totalMinutes, available: totalMinutes >= AVAILABLE_MINUTES }
+  const longestMinutes = slots.reduce((max, s) => Math.max(max, s.minutes), 0)
+  return { date: day, slots, totalMinutes, longestMinutes, available: longestMinutes >= AVAILABLE_MINUTES }
 }
 
 // [from, to] 每一天的空檔情況
@@ -79,11 +81,11 @@ export function availabilityRange(occs: Occurrence[], from: string, to: string):
   return days
 }
 
-// 「接下來一週可約」：可約的日子裡，空最多的前幾天（再依日期排）
+// 「接下來一週可約」：可約的日子裡，連續空最久的前幾天（再依日期排）
 export function bestDays(days: DayAvailability[], limit = 3): DayAvailability[] {
   return days
     .filter((d) => d.available)
-    .sort((a, b) => b.totalMinutes - a.totalMinutes || a.date.localeCompare(b.date))
+    .sort((a, b) => b.longestMinutes - a.longestMinutes || a.date.localeCompare(b.date))
     .slice(0, limit)
     .sort((a, b) => a.date.localeCompare(b.date))
 }

@@ -74,6 +74,7 @@ export default function DailyPage({ canEdit }: Props) {
         category_id: null,
         note: null,
         location: null,
+        is_task: true, // 從清單快速新增的是待辦：不算行程、不影響可約
       })
       setQuickTitle('')
       await reload()
@@ -90,7 +91,7 @@ export default function DailyPage({ canEdit }: Props) {
   function renderRow(item: Occurrence) {
     const color = itemColor(item, categories)
     const multiDay = item.end_date !== item.start_date
-    let time = '整天'
+    let time = item.is_task && !item.start_time ? '待辦' : '整天'
     if (item.start_time && item.start_date === date) {
       time = item.end_time
         ? `${formatTime(item.start_time)}–${formatTime(item.end_time)}`

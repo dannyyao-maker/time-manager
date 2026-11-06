@@ -9,15 +9,17 @@ export type Backup = {
   categories: Category[]
   items: Item[]
   occurrence_overrides: Override[]
+  memos: { id: string; text: string; created_at: string }[]
 }
 
 export async function fetchBackup(): Promise<Backup> {
-  const [cats, items, ovs] = await Promise.all([
+  const [cats, items, ovs, memos] = await Promise.all([
     supabase.from('categories').select('*').order('sort_order'),
     supabase.from('items').select('*').order('start_date'),
     supabase.from('occurrence_overrides').select('*').order('occurrence_date'),
+    supabase.from('memos').select('id, text, created_at').order('created_at'),
   ])
-  for (const r of [cats, items, ovs]) if (r.error) throw r.error
+  for (const r of [cats, items, ovs, memos]) if (r.error) throw r.error
   return {
     app: 'time-manager',
     version: 1,
@@ -25,6 +27,7 @@ export async function fetchBackup(): Promise<Backup> {
     categories: cats.data as Category[],
     items: items.data as Item[],
     occurrence_overrides: ovs.data as Override[],
+    memos: (memos.data ?? []) as Backup['memos'],
   }
 }
 

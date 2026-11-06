@@ -1,7 +1,7 @@
 -- =============================================================
--- 權限（RLS）測試：第二版（個人／共用、女友可編輯）
+-- 權限（RLS）測試：第二版（個人／共用、女友可編輯、備忘錄）
 -- 用途：模擬「沒登入的人」「陌生人」「viewer」「editor（女友）」「owner（你）」，
---       確認每個人只能做被允許的事。需要先執行 migrations 0001～0004。
+--       確認每個人只能做被允許的事。需要先執行 migrations 0001～0005。
 --
 -- 怎麼用：
 --   1. 確認 members 有你（role = owner），而且登入過網站。
@@ -48,6 +48,8 @@ declare
   n           integer;
   r           text;
   owner_after uuid;
+  my_memo     uuid;
+  memo_item   uuid;
 begin
   select u.id, u.email into owner_uid, owner_email
   from auth.users u
@@ -211,6 +213,42 @@ begin
     select count(*) into n from public.member_directory() d where d.user_id in (owner_uid, ed);
     reset role;
     res := res || jsonb_build_object('no', 23, 'test', 'editor：讀成員名冊（只有名字和角色，沒有 Email）', 'expected', '看到 2 人', 'actual', n || ' 人', 'pass', n = 2);
+
+    -- 24～28. 備忘錄（只有自己看得到；排到某天＝變成待辦、備忘錄刪掉）
+    perform pg_temp.act_as('authenticated', owner_uid, owner_email);
+    begin insert into public.memos (owner_id, text) values (owner_uid, 'RLS 測試備忘錄') returning id into my_memo;
+      r := '成功';
+    exception when others then r := '失敗：' || sqlerrm; end;
+    reset role;
+    res := res || jsonb_build_object('no', 24, 'test', 'owner：新增備忘錄', 'expected', '成功', 'actual', r, 'pass', r = '成功');
+
+    perform pg_temp.act_as('authenticated', ed, ed_email);
+    select count(*) into n from public.memos where id = my_memo;
+    reset role;
+    res := res || jsonb_build_object('no', 25, 'test', 'editor：讀我的備忘錄', 'expected', '0 筆', 'actual', n || ' 筆', 'pass', n = 0);
+
+    perform pg_temp.act_as('authenticated', ed, ed_email);
+    begin perform public.schedule_memo(my_memo, current_date); r := '成功（危險！）';
+    exception when others then r := '被拒絕'; end;
+    reset role;
+    res := res || jsonb_build_object('no', 26, 'test', 'editor：把我的備忘錄排到某天', 'expected', '被拒絕', 'actual', r, 'pass', r = '被拒絕');
+
+    perform pg_temp.act_as('authenticated', ed, ed_email);
+    delete from public.memos where id = my_memo; get diagnostics n = row_count;
+    reset role;
+    res := res || jsonb_build_object('no', 27, 'test', 'editor：刪除我的備忘錄', 'expected', '0 筆被刪除', 'actual', n || ' 筆被刪除', 'pass', n = 0);
+
+    perform pg_temp.act_as('authenticated', owner_uid, owner_email);
+    begin
+      memo_item := public.schedule_memo(my_memo, current_date);
+      r := '成功';
+    exception when others then r := '失敗：' || sqlerrm; end;
+    reset role;
+    select count(*) into n from public.items where id = memo_item and is_task and owner_id = owner_uid and title = 'RLS 測試備忘錄';
+    r := r || case when n = 1 then '，變成待辦' else '，沒有待辦' end;
+    select count(*) into n from public.memos where id = my_memo;
+    r := r || case when n = 0 then '，備忘錄已刪' else '，備忘錄還在' end;
+    res := res || jsonb_build_object('no', 28, 'test', 'owner：把備忘錄排到某天', 'expected', '成功，變成待辦，備忘錄已刪', 'actual', r, 'pass', r = '成功，變成待辦，備忘錄已刪');
 
     -- 撤銷這個區塊裡的所有資料
     raise exception using errcode = 'P0099', message = 'rollback test data';

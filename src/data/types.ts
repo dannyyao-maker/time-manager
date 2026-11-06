@@ -26,6 +26,7 @@ export type Item = {
   repeat_until: string | null
   calendar?: CalendarKind // 第二版：個人或共用；舊資料沒有就當作個人
   owner_id?: string // 誰建立的（個人行程的擁有者）
+  is_task?: boolean // 待辦（checkbox）：不算行程、不影響可約、對方看不到
 }
 
 // personal = 個人行程（只有擁有者能改）；shared = 共用（兩人都能改、不分類）
@@ -45,6 +46,7 @@ export type ItemInput = {
   repeat_freq?: RepeatFreq | null // 不給 = 不改
   repeat_until?: string | null
   calendar?: CalendarKind // 不給 = 不改（新增時預設個人）
+  is_task?: boolean // 不給 = 不改（新增時預設不是待辦）
 }
 
 // 重複項目的「單次覆寫」：對應 occurrence_overrides 表
