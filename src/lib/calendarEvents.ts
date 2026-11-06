@@ -25,10 +25,11 @@ export function addDays(iso: string, days: number): string {
 
 const hhmm = (t: string) => t.slice(0, 5)
 
-export function itemToEvent(item: Item, categories: Category[]): CalendarEvent {
+// item 可以是一般項目，或重複項目算出來的其中一次（有 key）
+export function itemToEvent(item: Item & { key?: string }, categories: Category[]): CalendarEvent {
   const color = resolveColor(item.category_id, categories)
   const base = {
-    id: item.id,
+    id: item.key ?? item.id,
     title: item.location ? `${item.title}｜${item.location}` : item.title,
     backgroundColor: color,
     borderColor: color,

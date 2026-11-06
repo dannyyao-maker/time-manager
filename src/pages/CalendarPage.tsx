@@ -12,23 +12,15 @@ import type {
   EventInput,
   EventSourceFuncArg,
 } from '@fullcalendar/core'
-import type { Category, Item } from '../data/types'
+import type { Category, Occurrence } from '../data/types'
 import { listCategories } from '../data/categories'
-import { createItem, deleteItem, listItemsInRange, updateItem } from '../data/items'
-import {
-  addDays,
-  eventToTiming,
-  itemToEvent,
-  itemToInput,
-  selectionToDefaults,
-  type ItemDefaults,
-} from '../lib/calendarEvents'
+import { updateItem } from '../data/items'
+import { listOccurrences, occurrenceToInput, saveThisOccurrence } from '../data/occurrences'
+import { addDays, eventToTiming, itemToEvent, itemToInput, selectionToDefaults } from '../lib/calendarEvents'
 import { toISODate, todayISO } from '../lib/dates'
-import ItemForm from '../components/ItemForm'
+import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 
 type Props = { canEdit: boolean }
-
-type Editing = { item: Item } | { defaults: ItemDefaults } | null
 
 const VIEW_KEY = 'tm.calendarView'
 const VIEWS = ['dayGridMonth', 'timeGridWeek', 'timeGridDay']
@@ -59,7 +51,7 @@ export default function CalendarPage({ canEdit }: Props) {
   const [categories, setCategories] = useState<Category[] | null>(null)
   const categoriesRef = useRef<Category[]>([])
   const [view, setView] = useState(loadView)
-  const [editing, setEditing] = useState<Editing>(null)
+  const [editing, setEditing] = useState<EditTarget | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -82,10 +74,10 @@ export default function CalendarPage({ canEdit }: Props) {
     ) => {
       const from = toISODate(info.start)
       const to = addDays(toISODate(info.end), -1)
-      listItemsInRange(from, to)
-        .then((items) => {
+      listOccurrences(from, to)
+        .then((occs) => {
           setError(null)
-          success(items.map((item) => itemToEvent(item, categoriesRef.current)))
+          success(occs.map((occ) => itemToEvent(occ, categoriesRef.current)))
         })
         .catch((e) => {
           setError(errMsg(e))
@@ -98,20 +90,22 @@ export default function CalendarPage({ canEdit }: Props) {
   function handleSelect(arg: DateSelectArg) {
     arg.view.calendar.unselect()
     if (!canEdit) return
-    setEditing({ defaults: selectionToDefaults(arg.start, arg.end, arg.allDay) })
+    setEditing({ kind: 'new', defaults: selectionToDefaults(arg.start, arg.end, arg.allDay) })
   }
 
   function handleEventClick(arg: EventClickArg) {
     if (!canEdit) return
-    setEditing({ item: arg.event.extendedProps.item as Item })
+    setEditing({ kind: 'occ', occ: arg.event.extendedProps.item as Occurrence })
   }
 
   // 拖拉移動或拉長：直接存回資料庫；失敗就還原
+  // 重複項目拖拉時，只移動這一次
   async function handleEventChange(arg: EventChangeArg) {
-    const item = arg.event.extendedProps.item as Item
+    const occ = arg.event.extendedProps.item as Occurrence
     const timing = eventToTiming(arg.event.start!, arg.event.end, arg.event.allDay)
     try {
-      await updateItem(item.id, { ...itemToInput(item), ...timing })
+      if (occ.series) await saveThisOccurrence(occ, { ...occurrenceToInput(occ), ...timing })
+      else await updateItem(occ.id, { ...itemToInput(occ), ...timing })
       refetch()
     } catch (e) {
       arg.revert()
@@ -137,7 +131,7 @@ export default function CalendarPage({ canEdit }: Props) {
       <div className="page-title">
         <h1>行事曆</h1>
         {canEdit && (
-          <button className="btn-primary" onClick={() => setEditing({ defaults: { startDate: todayISO() } })}>
+          <button className="btn-primary" onClick={() => setEditing({ kind: 'new', defaults: { startDate: todayISO() } })}>
             ＋ 新增項目
           </button>
         )}
@@ -182,26 +176,11 @@ export default function CalendarPage({ canEdit }: Props) {
       </div>
 
       {editing && (
-        <ItemForm
-          item={'item' in editing ? editing.item : null}
-          defaults={'defaults' in editing ? editing.defaults : { startDate: todayISO() }}
+        <OccurrenceEditor
+          target={editing}
           categories={categories}
           onClose={() => setEditing(null)}
-          onSave={async (input) => {
-            if ('item' in editing) await updateItem(editing.item.id, input)
-            else await createItem(input)
-            setEditing(null)
-            refetch()
-          }}
-          onDelete={
-            'item' in editing
-              ? async () => {
-                  await deleteItem(editing.item.id)
-                  setEditing(null)
-                  refetch()
-                }
-              : undefined
-          }
+          onChanged={refetch}
         />
       )}
     </section>

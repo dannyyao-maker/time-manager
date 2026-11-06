@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import type { Category, Item } from '../data/types'
+import type { Category, Occurrence } from '../data/types'
 import { categoryLabel, listCategories, resolveColor } from '../data/categories'
-import { createItem, deleteItem, listItemsInRange, setItemDone, updateItem } from '../data/items'
+import { createItem } from '../data/items'
+import { listOccurrences, setOccurrenceDone } from '../data/occurrences'
 import { addDays } from '../lib/calendarEvents'
 import { formatDateLabel, formatShortDate, formatTime, todayISO } from '../lib/dates'
 import { progress, splitDaily } from '../lib/daily'
-import ItemForm from '../components/ItemForm'
+import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 
 type Props = { canEdit: boolean }
 
@@ -14,11 +15,11 @@ const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 // 每日清單：像原本的 Notion 表，但不限筆數；和行事曆是同一份資料
 export default function DailyPage({ canEdit }: Props) {
   const [date, setDate] = useState(todayISO)
-  const [items, setItems] = useState<Item[]>([])
+  const [items, setItems] = useState<Occurrence[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [editing, setEditing] = useState<Item | 'new' | null>(null)
+  const [editing, setEditing] = useState<EditTarget | null>(null)
   const [quickTitle, setQuickTitle] = useState('')
   const [adding, setAdding] = useState(false)
 
@@ -26,7 +27,7 @@ export default function DailyPage({ canEdit }: Props) {
 
   const reload = useCallback(async () => {
     try {
-      const [its, cats] = await Promise.all([listItemsInRange(date, date), listCategories()])
+      const [its, cats] = await Promise.all([listOccurrences(date, date), listCategories()])
       setItems(its)
       setCategories(cats)
       setError(null)
@@ -43,13 +44,14 @@ export default function DailyPage({ canEdit }: Props) {
   }, [reload])
 
   // 勾選：畫面先變（感覺比較快），存失敗再改回來
-  async function toggleDone(item: Item) {
+  // 重複項目只勾「這一次」
+  async function toggleDone(item: Occurrence) {
     const next = !item.is_done
-    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_done: next } : i)))
+    setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, is_done: next } : i)))
     try {
-      await setItemDone(item.id, next)
+      await setOccurrenceDone(item, next)
     } catch (e) {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, is_done: item.is_done } : i)))
+      setItems((prev) => prev.map((i) => (i.key === item.key ? { ...i, is_done: item.is_done } : i)))
       setError(errMsg(e))
     }
   }
@@ -83,7 +85,7 @@ export default function DailyPage({ canEdit }: Props) {
   const { allDay, timed } = splitDaily(items, date)
   const { done, total } = progress([...allDay, ...timed])
 
-  function renderRow(item: Item) {
+  function renderRow(item: Occurrence) {
     const color = resolveColor(item.category_id, categories)
     const multiDay = item.end_date !== item.start_date
     let time = '整天'
@@ -95,7 +97,7 @@ export default function DailyPage({ canEdit }: Props) {
       time = '接續'
     }
     return (
-      <li key={item.id} className={item.is_done ? 'daily-row done' : 'daily-row'} style={{ borderLeftColor: color }}>
+      <li key={item.key} className={item.is_done ? 'daily-row done' : 'daily-row'} style={{ borderLeftColor: color }}>
         <input
           type="checkbox"
           className="daily-check"
@@ -107,7 +109,7 @@ export default function DailyPage({ canEdit }: Props) {
         <span className="daily-time">{time}</span>
         <button
           className="daily-main"
-          onClick={() => canEdit && setEditing(item)}
+          onClick={() => canEdit && setEditing({ kind: 'occ', occ: item })}
           disabled={!canEdit}
         >
           <span className="item-title">{item.title}</span>
@@ -115,6 +117,7 @@ export default function DailyPage({ canEdit }: Props) {
             <span className="dot" style={{ background: color }} />
             {categoryLabel(item.category_id, categories)}
             {multiDay && ` · ${formatShortDate(item.start_date)}–${formatShortDate(item.end_date)}`}
+            {item.series && ' · 🔁 重複'}
             {item.location && ` · 📍${item.location}`}
           </span>
           {item.note && <span className="item-note">{item.note}</span>}
@@ -128,7 +131,7 @@ export default function DailyPage({ canEdit }: Props) {
       <div className="page-title">
         <h1>每日清單</h1>
         {canEdit && (
-          <button className="btn-primary" onClick={() => setEditing('new')}>
+          <button className="btn-primary" onClick={() => setEditing({ kind: 'new', defaults: { startDate: date } })}>
             ＋ 新增項目
           </button>
         )}
@@ -207,26 +210,11 @@ export default function DailyPage({ canEdit }: Props) {
       )}
 
       {editing && (
-        <ItemForm
-          item={editing === 'new' ? null : editing}
-          defaults={{ startDate: date }}
+        <OccurrenceEditor
+          target={editing}
           categories={categories}
           onClose={() => setEditing(null)}
-          onSave={async (input) => {
-            if (editing === 'new') await createItem(input)
-            else await updateItem(editing.id, input)
-            setEditing(null)
-            await reload()
-          }}
-          onDelete={
-            editing === 'new'
-              ? undefined
-              : async () => {
-                  await deleteItem(editing.id)
-                  setEditing(null)
-                  await reload()
-                }
-          }
+          onChanged={reload}
         />
       )}
     </section>

@@ -36,4 +36,30 @@ export type ItemInput = {
   note: string | null
   location: string | null
   is_done?: boolean // 不給 = 不改（新增時預設未完成）
+  repeat_freq?: RepeatFreq | null // 不給 = 不改
+  repeat_until?: string | null
+}
+
+// 重複項目的「單次覆寫」：對應 occurrence_overrides 表
+// 覆寫欄位空白 = 沿用整串的設定
+export type Override = {
+  id: string
+  item_id: string
+  occurrence_date: string // 原本應該發生的那一天
+  is_cancelled: boolean
+  is_done: boolean
+  title: string | null
+  start_date: string | null
+  end_date: string | null
+  start_time: string | null
+  end_time: string | null
+  note: string | null
+  location: string | null
+}
+
+// 畫面上看到的「一次」：一般項目就是它自己；重複項目是依規則算出來的其中一次
+export type Occurrence = Item & {
+  key: string // 畫面用的唯一代號：一般項目 = id；重複項目 = id:原本日期
+  occurrence_date: string | null // 重複項目的原本日期；一般項目為空白
+  series: Item | null // 重複項目的整串設定；一般項目為空白
 }

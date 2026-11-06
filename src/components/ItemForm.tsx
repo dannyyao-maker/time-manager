@@ -1,12 +1,17 @@
 import { useState, type FormEvent } from 'react'
-import type { Category, Item, ItemInput } from '../data/types'
+import type { Category, Item, ItemInput, RepeatFreq } from '../data/types'
 import { sortAsTree } from '../data/categories'
-import { formatTime } from '../lib/dates'
+import { formatShortDate, formatTime } from '../lib/dates'
+import { describeRepeat } from '../lib/recurrence'
 import type { ItemDefaults } from '../lib/calendarEvents'
 import Modal from './Modal'
 
+// item：一般項目或新增；series：編輯整串重複；occurrence：只改重複項目的這一次
+export type FormMode = 'item' | 'series' | 'occurrence'
+
 type Props = {
   item: Item | null // null = 新增
+  mode?: FormMode
   defaults: ItemDefaults // 新增時的預設日期／時間
   categories: Category[]
   onSave: (input: ItemInput) => Promise<void>
@@ -14,7 +19,14 @@ type Props = {
   onClose: () => void
 }
 
-export default function ItemForm({ item, defaults, categories, onSave, onDelete, onClose }: Props) {
+const REPEAT_OPTIONS: { value: RepeatFreq | ''; label: string }[] = [
+  { value: '', label: '不重複' },
+  { value: 'daily', label: '每天' },
+  { value: 'weekly', label: '每週' },
+  { value: 'monthly', label: '每月' },
+]
+
+export default function ItemForm({ item, mode = 'item', defaults, categories, onSave, onDelete, onClose }: Props) {
   const [title, setTitle] = useState(item?.title ?? '')
   const [startDate, setStartDate] = useState(item?.start_date ?? defaults.startDate)
   const [endDate, setEndDate] = useState(item?.end_date ?? defaults.endDate ?? defaults.startDate)
@@ -25,11 +37,27 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
   const [location, setLocation] = useState(item?.location ?? '')
   const [note, setNote] = useState(item?.note ?? '')
   const [done, setDone] = useState(item?.is_done ?? false)
+  const [repeatFreq, setRepeatFreq] = useState<RepeatFreq | ''>(item?.repeat_freq ?? '')
+  const [repeatUntil, setRepeatUntil] = useState(item?.repeat_until ?? '')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const tree = sortAsTree(categories)
+  const isOccurrence = mode === 'occurrence'
+  const showRepeat = !isOccurrence
+  const showDone = !!item && mode !== 'series' && !repeatFreq
+
+  const heading = !item
+    ? '新增項目'
+    : mode === 'series'
+      ? '編輯整串重複'
+      : isOccurrence
+        ? `只改這一次（${formatShortDate(item.start_date)}）`
+        : '編輯項目'
+  const deleteLabel = mode === 'series' ? '刪除整串' : isOccurrence ? '刪除這一次' : '刪除'
+  const deleteQuestion =
+    mode === 'series' ? '整串都刪掉？' : isOccurrence ? '只刪這一次（例如停課）？' : '確定刪除？'
 
   function changeStartDate(value: string) {
     // 結束日期不能早於開始日期：跟著往後推
@@ -45,6 +73,7 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
       if (!startTime) return '請填開始時間，或勾選「整天」'
       if (endTime && endDate === startDate && endTime < startTime) return '結束時間不能早於開始時間'
     }
+    if (repeatFreq && repeatUntil && repeatUntil < startDate) return '「重複到」不能早於開始日期'
     return null
   }
 
@@ -57,18 +86,23 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
     }
     setBusy(true)
     setError(null)
+    const input: ItemInput = {
+      title: title.trim(),
+      start_date: startDate,
+      end_date: endDate,
+      start_time: allDay ? null : startTime,
+      end_time: allDay || !endTime ? null : endTime,
+      category_id: categoryId || null,
+      location: location.trim() || null,
+      note: note.trim() || null,
+    }
+    if (showDone || isOccurrence) input.is_done = done
+    if (showRepeat) {
+      input.repeat_freq = repeatFreq || null
+      input.repeat_until = repeatFreq && repeatUntil ? repeatUntil : null
+    }
     try {
-      await onSave({
-        title: title.trim(),
-        start_date: startDate,
-        end_date: endDate,
-        start_time: allDay ? null : startTime,
-        end_time: allDay || !endTime ? null : endTime,
-        category_id: categoryId || null,
-        location: location.trim() || null,
-        note: note.trim() || null,
-        is_done: done,
-      })
+      await onSave(input)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setBusy(false)
@@ -88,8 +122,15 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
   }
 
   return (
-    <Modal title={item ? '編輯項目' : '新增項目'} onClose={onClose}>
+    <Modal title={heading} onClose={onClose}>
       <form className="item-form" onSubmit={handleSubmit}>
+        {isOccurrence && (
+          <p className="form-note">只會改這一次，其他次不受影響。</p>
+        )}
+        {mode === 'series' && (
+          <p className="form-note">會改到這一串的每一次。被單獨改過的那幾次，會保留它們自己改過的欄位。</p>
+        )}
+
         <label>
           標題 <span className="required">*</span>
           <input
@@ -103,7 +144,7 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
 
         <div className="row-2">
           <label>
-            開始日期
+            {mode === 'series' ? '第一次的日期' : '開始日期'}
             <input type="date" value={startDate} onChange={(e) => changeStartDate(e.target.value)} />
           </label>
           <label>
@@ -113,7 +154,12 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
         </div>
 
         <label className="checkbox">
-          <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={allDay}
+            onChange={(e) => setAllDay(e.target.checked)}
+            disabled={isOccurrence}
+          />
           整天／沒有特定時間（當天待辦）
         </label>
 
@@ -130,9 +176,43 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
           </div>
         )}
 
+        {showRepeat && (
+          <div className="repeat-box">
+            <div className="row-2">
+              <label>
+                重複
+                <select value={repeatFreq} onChange={(e) => setRepeatFreq(e.target.value as RepeatFreq | '')}>
+                  {REPEAT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {repeatFreq && (
+                <label>
+                  重複到（選填）
+                  <input
+                    type="date"
+                    value={repeatUntil}
+                    min={startDate}
+                    onChange={(e) => setRepeatUntil(e.target.value)}
+                  />
+                </label>
+              )}
+            </div>
+            {repeatFreq && (
+              <p className="muted small repeat-desc">
+                {describeRepeat(startDate, repeatFreq, repeatUntil || null)}
+                {!repeatUntil && '（沒有結束日期）'}
+              </p>
+            )}
+          </div>
+        )}
+
         <label>
           類別
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={isOccurrence}>
             <option value="">未分類</option>
             {tree.map(({ top, children }) => [
               <option key={top.id} value={top.id}>
@@ -146,6 +226,7 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
               )),
             ])}
           </select>
+          {isOccurrence && <span className="muted small">類別要改整串</span>}
         </label>
 
         <label>
@@ -158,10 +239,10 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
           <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
-        {item && (
+        {(showDone || isOccurrence) && (
           <label className="checkbox">
             <input type="checkbox" checked={done} onChange={(e) => setDone(e.target.checked)} />
-            已完成
+            {isOccurrence ? '這一次已完成' : '已完成'}
           </label>
         )}
 
@@ -175,14 +256,14 @@ export default function ItemForm({ item, defaults, categories, onSave, onDelete,
               onClick={() => setConfirmingDelete(true)}
               disabled={busy}
             >
-              刪除
+              {deleteLabel}
             </button>
           )}
           {confirmingDelete && (
             <span className="push-left confirm-inline">
-              確定刪除？
+              {deleteQuestion}
               <button type="button" className="btn-danger btn-small" onClick={handleDelete} disabled={busy}>
-                刪除
+                {deleteLabel}
               </button>
               <button type="button" className="btn-ghost btn-small" onClick={() => setConfirmingDelete(false)}>
                 不要

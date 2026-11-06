@@ -1,26 +1,34 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Category, Item } from '../data/types'
+import type { Category, Occurrence } from '../data/types'
 import { categoryLabel, listCategories, resolveColor } from '../data/categories'
-import { createItem, deleteItem, listItems, updateItem } from '../data/items'
+import { listOccurrences } from '../data/occurrences'
+import { addDays } from '../lib/calendarEvents'
 import { formatDateLabel, formatShortDate, formatTime, todayISO } from '../lib/dates'
-import ItemForm from '../components/ItemForm'
+import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 
 type Props = { canEdit: boolean }
 
-// 暫時的列表檢視：階段 3 會加上月曆和週曆
+// 列表檢視：重複項目沒有盡頭，所以只列一段期間
+const FUTURE_DAYS = 90
+const PAST_DAYS = 365
+
 export default function ItemsPage({ canEdit }: Props) {
-  const [items, setItems] = useState<Item[]>([])
+  const [items, setItems] = useState<Occurrence[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showPast, setShowPast] = useState(false)
-  const [editing, setEditing] = useState<Item | 'new' | null>(null)
+  const [editing, setEditing] = useState<EditTarget | null>(null)
 
   const today = todayISO()
 
   const reload = useCallback(async () => {
     try {
-      const [its, cats] = await Promise.all([listItems(showPast ? undefined : today), listCategories()])
+      const from = showPast ? addDays(today, -PAST_DAYS) : today
+      const [its, cats] = await Promise.all([
+        listOccurrences(from, addDays(today, FUTURE_DAYS)),
+        listCategories(),
+      ])
       setItems(its)
       setCategories(cats)
       setError(null)
@@ -37,7 +45,7 @@ export default function ItemsPage({ canEdit }: Props) {
 
   // 依日期分組；只看未來時，已經開始但還沒結束的跨天項目放在「今天」
   const groups = useMemo(() => {
-    const map = new Map<string, Item[]>()
+    const map = new Map<string, Occurrence[]>()
     for (const item of items) {
       const key = !showPast && item.start_date < today ? today : item.start_date
       if (!map.has(key)) map.set(key, [])
@@ -46,7 +54,7 @@ export default function ItemsPage({ canEdit }: Props) {
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [items, showPast, today])
 
-  function timeText(item: Item) {
+  function timeText(item: Occurrence) {
     if (!item.start_time) return '整天'
     return item.end_time
       ? `${formatTime(item.start_time)}–${formatTime(item.end_time)}`
@@ -56,9 +64,9 @@ export default function ItemsPage({ canEdit }: Props) {
   return (
     <section>
       <div className="page-title">
-        <h1>項目</h1>
+        <h1>項目列表</h1>
         {canEdit && (
-          <button className="btn-primary" onClick={() => setEditing('new')}>
+          <button className="btn-primary" onClick={() => setEditing({ kind: 'new', defaults: { startDate: today } })}>
             ＋ 新增項目
           </button>
         )}
@@ -66,15 +74,16 @@ export default function ItemsPage({ canEdit }: Props) {
 
       <label className="checkbox toggle-past">
         <input type="checkbox" checked={showPast} onChange={(e) => setShowPast(e.target.checked)} />
-        顯示過去的項目
+        也顯示過去一年的項目
       </label>
+      <p className="muted small list-range">列出到 {FUTURE_DAYS} 天後為止；更遠的請看行事曆。</p>
 
       {error && <p className="error">發生錯誤：{error}</p>}
       {loading && <p className="muted">載入中…</p>}
 
       {!loading && groups.length === 0 && (
         <div className="empty-box">
-          <p>{showPast ? '還沒有任何項目。' : '今天以後沒有項目。'}</p>
+          <p>這段期間沒有項目。</p>
           {canEdit && <p className="muted small">按右上角「＋ 新增項目」開始。</p>}
         </div>
       )}
@@ -90,10 +99,10 @@ export default function ItemsPage({ canEdit }: Props) {
             const multiDay = item.end_date !== item.start_date
             return (
               <button
-                key={item.id}
+                key={item.key}
                 className={item.is_done ? 'item-row done' : 'item-row'}
                 style={{ borderLeftColor: color }}
-                onClick={() => canEdit && setEditing(item)}
+                onClick={() => canEdit && setEditing({ kind: 'occ', occ: item })}
                 disabled={!canEdit}
               >
                 <span className="item-time">{timeText(item)}</span>
@@ -106,6 +115,7 @@ export default function ItemsPage({ canEdit }: Props) {
                     <span className="dot" style={{ background: color }} />
                     {categoryLabel(item.category_id, categories)}
                     {multiDay && ` · ${formatShortDate(item.start_date)}–${formatShortDate(item.end_date)}`}
+                    {item.series && ' · 🔁 重複'}
                     {item.location && ` · 📍${item.location}`}
                   </span>
                   {item.note && <span className="item-note">{item.note}</span>}
@@ -117,26 +127,11 @@ export default function ItemsPage({ canEdit }: Props) {
       ))}
 
       {editing && (
-        <ItemForm
-          item={editing === 'new' ? null : editing}
-          defaults={{ startDate: today }}
+        <OccurrenceEditor
+          target={editing}
           categories={categories}
           onClose={() => setEditing(null)}
-          onSave={async (input) => {
-            if (editing === 'new') await createItem(input)
-            else await updateItem(editing.id, input)
-            setEditing(null)
-            await reload()
-          }}
-          onDelete={
-            editing === 'new'
-              ? undefined
-              : async () => {
-                  await deleteItem(editing.id)
-                  setEditing(null)
-                  await reload()
-                }
-          }
+          onChanged={reload}
         />
       )}
     </section>
