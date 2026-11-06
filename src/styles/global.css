@@ -1163,8 +1163,13 @@ button.item-row:hover:not(:disabled) {
 }
 
 .legend-free {
-  background: rgba(52, 168, 107, 0.45);
-  border-radius: 3px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(52, 168, 107, 0.16);
+  color: #22704a;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.6;
 }
 
 .legend-switch {
@@ -1178,9 +1183,64 @@ button.item-row:hover:not(:disabled) {
   opacity: 1;
 }
 
-.calendar-wrap .fc .fc-bg-event.free-day {
-  background: rgba(52, 168, 107, 0.12);
-  opacity: 1;
+/* 月曆：可約的日子，日期右邊一個小小的「可約」（FullCalendar 的日期列是右到左排，所以用 ::before 才會在右邊） */
+.calendar-wrap .fc .fc-daygrid-day.is-available .fc-daygrid-day-top::before {
+  content: '可約';
+  align-self: center;
+  margin: 4px 3px 0 0;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(52, 168, 107, 0.16);
+  color: #22704a;
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.6;
+}
+
+/* 月曆不顯示綠色空檔（改用「可約」標籤） */
+.calendar-wrap .fc .fc-daygrid-body .fc-bg-event.free-slot {
+  display: none;
+}
+
+/* 接下來一週可約 */
+.upcoming {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -2px 2px 12px;
+}
+
+.upcoming-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #22704a;
+}
+
+.upcoming-day {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(52, 168, 107, 0.14);
+  color: #1d5f3f;
+  font-size: 0.85rem;
+}
+
+.upcoming-day strong {
+  font-family: var(--font-num);
+}
+
+.upcoming-day span {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.upcoming-day:hover {
+  background: rgba(52, 168, 107, 0.24);
 }
 
 .free-note {
@@ -1724,6 +1784,16 @@ textarea.tt-input {
 
   .calendar-wrap .fc .fc-daygrid-event .fc-event-main {
     text-overflow: clip;
+  }
+
+  /* 手機格子很窄：「可約」縮成一個小綠點 */
+  .calendar-wrap .fc .fc-daygrid-day.is-available .fc-daygrid-day-top::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    margin: 4px 2px 0 0;
+    padding: 0;
+    background: #34a86b;
   }
 
   .cal-top {

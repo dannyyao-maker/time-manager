@@ -23,7 +23,8 @@ import { getCurrentUserId } from '../lib/session'
 import { canEditItem, type ViewMode } from '../lib/views'
 import { buildViewEvents, findPartner } from '../lib/viewEvents'
 import type { BusyBlock } from '../lib/busy'
-import { freeSlots, longestFreeByDay } from '../lib/freeTime'
+import { availabilityRange, bestDays, hoursText, slotsText, type DayAvailability } from '../lib/freeTime'
+import { chipDate } from '../lib/formTime'
 import { useIsNarrow, useIsTouch } from '../hooks/useMedia'
 import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEditor'
 import DaySheet from '../components/DaySheet'
@@ -58,29 +59,20 @@ function save(key: string, value: string) {
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
 const FREE_KEY = 'tm.showFree'
-const MONTH_FREE_MINUTES = 120 // 月曆：一天至少有 2 小時共同空檔才標綠色
-const WEEK_FREE_MINUTES = 60 // 週曆／日曆：至少 1 小時的空檔才標
+const WEEK_FREE_MINUTES = 60 // 週曆／日曆：可約的日子裡，至少 1 小時的空檔才標綠色
 
-// 共同空檔 → 行事曆的背景色塊（綠色）
-function freeEvents(occs: Occurrence[], from: string, to: string, isMonth: boolean): EventInput[] {
-  if (isMonth) {
-    const longest = longestFreeByDay(freeSlots(occs, from, to, MONTH_FREE_MINUTES))
-    return [...longest.keys()].map((day) => ({
-      id: `free-${day}`,
-      start: day,
-      end: addDays(day, 1),
-      allDay: true,
+// 週曆／日曆：可約日子的空檔 → 綠色背景
+function freeEvents(days: DayAvailability[]): EventInput[] {
+  return days
+    .filter((d) => d.available)
+    .flatMap((d) => d.slots.filter((s) => s.minutes >= WEEK_FREE_MINUTES))
+    .map((s, i) => ({
+      id: `free-${i}`,
+      start: `${s.date}T${s.start}`,
+      end: `${s.date}T${s.end}`,
       display: 'background',
-      classNames: ['free-day'],
+      classNames: ['free-slot'],
     }))
-  }
-  return freeSlots(occs, from, to, WEEK_FREE_MINUTES).map((s, i) => ({
-    id: `free-${i}`,
-    start: `${s.date}T${s.start}`,
-    end: `${s.date}T${s.end}`,
-    display: 'background',
-    classNames: ['free-slot'],
-  }))
 }
 
 // 單筆項目的細節（給對方的個人行程用，只能看）
@@ -106,6 +98,9 @@ export default function CalendarPage({ canEdit }: Props) {
   const [detail, setDetail] = useState<BusyBlock | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showFree, setShowFree] = useState(() => load(FREE_KEY, ['on', 'off'], 'on') === 'on')
+  const [upcoming, setUpcoming] = useState<DayAvailability[] | null>(null)
+  const [version, setVersion] = useState(0) // 資料有改動就加一，讓「接下來一週可約」重新算
+  const availableDays = useRef(new Set<string>()) // 月曆上要標「可約」的日子
   const isNarrow = useIsNarrow()
   const isTouch = useIsTouch()
 
@@ -126,7 +121,39 @@ export default function CalendarPage({ canEdit }: Props) {
       .catch((e) => setError(errMsg(e)))
   }, [])
 
-  const refetch = () => calendarRef.current?.getApi().refetchEvents()
+  const refetch = () => {
+    calendarRef.current?.getApi().refetchEvents()
+    setVersion((v) => v + 1)
+  }
+
+  // 月曆：在可約的日子加上小小的「可約」標籤（直接加在格子上，不佔項目的位置）
+  const markAvailableDays = useCallback(() => {
+    const wrap = document.querySelector('.calendar-wrap')
+    wrap?.querySelectorAll<HTMLElement>('.fc-daygrid-day[data-date]').forEach((cell) => {
+      cell.classList.toggle('is-available', availableDays.current.has(cell.dataset.date!))
+    })
+  }, [])
+
+  // 共用行事曆最上面：接下來一週可約的日子
+  useEffect(() => {
+    if (activeMode !== 'shared' || !showFree) {
+      setUpcoming(null)
+      return
+    }
+    let cancelled = false
+    const today = todayISO()
+    const last = addDays(today, 6)
+    listOccurrences(today, last)
+      .then((occs) => {
+        if (!cancelled) setUpcoming(bestDays(availabilityRange(occs, today, last)))
+      })
+      .catch(() => {
+        if (!cancelled) setUpcoming(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [activeMode, showFree, version])
 
   // 換行事曆時重新畫
   useEffect(() => {
@@ -144,12 +171,14 @@ export default function CalendarPage({ canEdit }: Props) {
           const c = ctx.current
           const m = c.mode === 'partner' && !findPartner(c.members, c.me) ? 'mine' : c.mode
           const events = buildViewEvents(occs, m, c.me, c.members, c.categories)
-          // 共用行事曆：標出兩個人都有空的時段
-          if (m === 'shared' && c.showFree) {
-            const isMonth = calendarRef.current?.getApi().view.type === 'dayGridMonth'
-            events.push(...freeEvents(occs, from, to, isMonth))
-          }
+          // 共用行事曆：標出可約的日子（12:00–22:00 兩人都空的時間加起來 ≥ 5 小時）
+          const days = m === 'shared' && c.showFree ? availabilityRange(occs, from, to) : []
+          availableDays.current = new Set(days.filter((d) => d.available).map((d) => d.date))
+          // 綠色空檔一律放進去（月曆會用 CSS 藏起來、改顯示「可約」標籤）：
+          // 從月曆切到週曆時，行事曆元件會沿用月曆已經拿到的資料，不會重拿
+          events.push(...freeEvents(days))
           success(events)
+          markAvailableDays()
         })
         .catch((e) => {
           setError(errMsg(e))
@@ -273,8 +302,8 @@ export default function CalendarPage({ canEdit }: Props) {
             約會
           </span>
           <span className="legend-item">
-            <span className="dot legend-free" />
-            兩人都有空
+            <span className="legend-free">可約</span>
+            12–22 點空滿 5 小時
           </span>
           <label className="switch legend-switch">
             <input
@@ -285,9 +314,25 @@ export default function CalendarPage({ canEdit }: Props) {
                 save(FREE_KEY, e.target.checked ? 'on' : 'off')
               }}
             />
-            <span>標出共同空檔</span>
+            <span>標出可約</span>
           </label>
         </p>
+      )}
+
+      {activeMode === 'shared' && showFree && upcoming && (
+        <div className="upcoming">
+          <span className="upcoming-title">接下來一週可約</span>
+          {upcoming.length === 0 ? (
+            <span className="muted small">沒有空滿 5 小時的日子</span>
+          ) : (
+            upcoming.map((d) => (
+              <button key={d.date} className="upcoming-day" onClick={() => setSheetDate(d.date)} title={slotsText(d)}>
+                <strong>{chipDate(d.date)}</strong>
+                <span>{hoursText(d.totalMinutes)}</span>
+              </button>
+            ))
+          )}
+        </div>
       )}
 
       {error && <p className="error">發生錯誤：{error}</p>}
@@ -318,6 +363,9 @@ export default function CalendarPage({ canEdit }: Props) {
           selectMirror
           select={handleSelect}
           dateClick={handleDateClick}
+          dayCellDidMount={(arg) => {
+            if (availableDays.current.has(toISODate(arg.date))) arg.el.classList.add('is-available')
+          }}
           eventClick={handleEventClick}
           eventChange={handleEventChange}
           datesSet={handleDatesSet}

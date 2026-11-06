@@ -5,7 +5,7 @@ import { listOccurrences } from '../data/occurrences'
 import { memberBadge, type Member } from '../data/members'
 import { formatDateLabel, formatTime } from '../lib/dates'
 import { splitDaily } from '../lib/daily'
-import { freeSlots } from '../lib/freeTime'
+import { dayAvailability, hoursText, slotsText } from '../lib/freeTime'
 import { getCurrentUserId } from '../lib/session'
 import { canEditItem, isMine, visibility, type ViewMode } from '../lib/views'
 import Modal from './Modal'
@@ -38,7 +38,7 @@ export default function DaySheet({ date, mode, showFree, categories, members, ca
   const visible = (items ?? []).filter((o) => visibility(o, mode, me) !== 'hidden')
   const sections = splitDaily(visible, date)
   const ordered = [...sections.allDay, ...sections.timed]
-  const free = showFree && items ? freeSlots(items, date, date, 60) : []
+  const free = showFree && items ? dayAvailability(items, date) : null
 
   return (
     <Modal title={formatDateLabel(date)} onClose={onClose} bare>
@@ -55,11 +55,13 @@ export default function DaySheet({ date, mode, showFree, categories, members, ca
           </button>
         </span>
       </div>
-      {showFree && items && (
-        <p className={free.length ? 'free-note' : 'free-note none'}>
-          {free.length
-            ? `兩人都有空：${free.map((f) => `${f.start}–${f.end}`).join('、')}`
-            : '這天 09:00–23:00 沒有 1 小時以上的共同空檔'}
+      {free && (
+        <p className={free.available ? 'free-note' : 'free-note none'}>
+          {free.available
+            ? `可約・12–22 點共空 ${hoursText(free.totalMinutes)}：${slotsText(free)}`
+            : free.totalMinutes > 0
+              ? `12–22 點只空 ${hoursText(free.totalMinutes)}（不到 5 小時）：${slotsText(free)}`
+              : '12–22 點沒有空檔'}
         </p>
       )}
       {error && <p className="error">發生錯誤：{error}</p>}
