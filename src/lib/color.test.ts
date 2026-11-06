@@ -32,8 +32,18 @@ describe('共用項目的顏色和標籤', async () => {
   const cats = [{ id: 'c', parent_id: null, name: '約會', color: '#3D8FE0', sort_order: 0 }]
   it('共用項目用共用色、標籤寫「共用」；個人行程照類別', () => {
     expect(itemColor({ category_id: null, calendar: 'shared' }, cats)).toBe(SHARED_COLOR)
-    expect(itemLabel({ category_id: null, calendar: 'shared' }, cats)).toBe('共用')
+    expect(itemLabel({ category_id: null, calendar: 'shared' }, cats)).toBe('約會')
     expect(itemColor({ category_id: 'c', calendar: 'personal' }, cats)).toBe('#3D8FE0')
     expect(itemLabel({ category_id: 'c' }, cats)).toBe('約會')
+  })
+})
+
+describe('共用行事曆上每個人的名字和顏色', async () => {
+  const { memberBadge } = await import('../data/members')
+  const { OWNER_COLOR, EDITOR_COLOR } = await import('../data/categories')
+  it('名冊有名字就用名字；沒有就用「點」「宛」；我藍色、女友粉色', () => {
+    expect(memberBadge({ user_id: 'a', display_name: '點', role: 'owner' })).toEqual({ label: '點', color: OWNER_COLOR })
+    expect(memberBadge({ user_id: 'b', display_name: null, role: 'editor' })).toEqual({ label: '宛', color: EDITOR_COLOR })
+    expect(memberBadge(undefined).label).toBe('忙碌')
   })
 })

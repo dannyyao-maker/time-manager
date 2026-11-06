@@ -74,9 +74,13 @@ export function resolveColor(categoryId: string | null, all: Category[]): string
   return parent?.color ?? UNCATEGORIZED_COLOR
 }
 
-// 共用項目（第二版）：不分類，統一用共用色
-export const SHARED_COLOR = '#E0577F'
-export const SHARED_LABEL = '共用'
+// 第二版：共用行事曆的三種標示（2026-11-07 決定）
+//   點（我，藍色）、宛（女友，粉色）：對方的個人行程顯示成這個，代表那個人那天不行
+//   約會（紫色）：「一起」的項目，兩人都能改
+export const SHARED_COLOR = '#9B7BD8'
+export const SHARED_LABEL = '約會'
+export const OWNER_COLOR = '#3D8FE0'
+export const EDITOR_COLOR = '#E0577F'
 
 type Colorable = { category_id: string | null; calendar?: 'personal' | 'shared' }
 

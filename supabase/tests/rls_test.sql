@@ -201,6 +201,17 @@ begin
     reset role;
     res := res || jsonb_build_object('no', 21, 'test', 'owner：刪除共用項目', 'expected', '1 筆被刪除', 'actual', n || ' 筆被刪除', 'pass', n = 1);
 
+    -- 22～23. 成員名冊（共用行事曆顯示「點」「宛」用）
+    perform pg_temp.act_as('authenticated', st, st_email);
+    select count(*) into n from public.member_directory();
+    reset role;
+    res := res || jsonb_build_object('no', 22, 'test', '陌生人：讀成員名冊', 'expected', '0 筆', 'actual', n || ' 筆', 'pass', n = 0);
+
+    perform pg_temp.act_as('authenticated', ed, ed_email);
+    select count(*) into n from public.member_directory() d where d.user_id in (owner_uid, ed);
+    reset role;
+    res := res || jsonb_build_object('no', 23, 'test', 'editor：讀成員名冊（只有名字和角色，沒有 Email）', 'expected', '看到 2 人', 'actual', n || ' 人', 'pass', n = 2);
+
     -- 撤銷這個區塊裡的所有資料
     raise exception using errcode = 'P0099', message = 'rollback test data';
   exception when sqlstate 'P0099' then

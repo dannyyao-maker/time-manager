@@ -12,7 +12,8 @@
 --      - 共用項目：owner 和 editor 都能新增／修改／刪除
 --      - 共用項目沒有類別（統一用共用色）
 --      - 項目的擁有者不能被改掉
---   4. 現有「約會」類別的項目搬到共用行事曆
+--   4. 成員名冊 member_directory()：只給成員看名字和角色（不含 Email）
+--   現有項目全部維持「個人」（在共用行事曆顯示成忙碌）
 -- =============================================================
 
 -- 1. 新欄位
@@ -141,11 +142,25 @@ create policy "overrides: 可刪除可編輯項目的"
     )
   );
 
--- 4. 現有「約會」類別的項目搬到共用（共用項目不分類）
-update public.items i
-set calendar = 'shared', category_id = null
-from public.categories c
-where i.category_id = c.id and c.name = '約會';
+-- 4. 成員名冊：讓網站知道每筆項目是誰的（共用行事曆顯示「點」或「宛」）
+--    只回傳 id、名字、角色，不回傳 Email；只有成員呼叫才有結果
+create function public.member_directory()
+returns table (user_id uuid, display_name text, role text)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select u.id, m.display_name, m.role
+  from public.members m
+  join auth.users u on lower(u.email) = lower(m.email)
+  where public.is_member()
+$$;
+
+revoke all on function public.member_directory() from public, anon;
+grant execute on function public.member_directory() to authenticated;
+
+-- 現有的項目全部維持「個人」（在共用行事曆顯示成忙碌）；之後想改成「一起」再個別改
 
 -- 確認結果
 select calendar as 行事曆, count(*) as 筆數 from public.items group by 1 order by 1;
