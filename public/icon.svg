@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Time Manager 圖示：湖水綠底、白色日曆、打勾（行程＋待辦是同一種東西） -->
+  <rect width="512" height="512" fill="#2A9D8F"/>
+  <!-- 內容放在中間 72% 的安全範圍，Android 裁成圓形也不會被切到 -->
+  <g transform="translate(256 262)">
+    <rect x="-118" y="-104" width="236" height="208" rx="34" fill="#FFFDFB"/>
+    <path d="M-118 -50 h236 v-20 a34 34 0 0 0 -34 -34 h-168 a34 34 0 0 0 -34 34 z" fill="#E2F2EF"/>
+    <rect x="-70" y="-132" width="22" height="56" rx="11" fill="#FFFDFB"/>
+    <rect x="48" y="-132" width="22" height="56" rx="11" fill="#FFFDFB"/>
+    <path d="M-48 22 l34 34 l66 -72" fill="none" stroke="#2A9D8F" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
