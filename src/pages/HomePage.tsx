@@ -6,6 +6,7 @@ import MemoPage from './MemoPage'
 import ItemsPage from './ItemsPage'
 import SettingsPage from './SettingsPage'
 import TabIcon from '../components/TabIcon'
+import Tour from '../components/tour/Tour'
 
 type Props = { displayName: string; role: Role }
 
@@ -20,6 +21,15 @@ const TABS: { id: Exclude<Tab, 'settings'>; label: string }[] = [
 ]
 
 const TAB_KEY = 'tm.tab'
+const TOUR_KEY = 'tm.tourSeen' // 這台裝置看過導覽了嗎
+
+function tourSeen(): boolean {
+  try {
+    return localStorage.getItem(TOUR_KEY) === '1'
+  } catch {
+    return true // 讀不到（例如無痕模式）就不要每次都跳出來
+  }
+}
 const ALL_TABS: Tab[] = ['calendar', 'daily', 'memo', 'items', 'settings']
 
 // 記住上次停在哪一頁（只存在這台裝置的瀏覽器）
@@ -39,6 +49,17 @@ export default function HomePage({ displayName, role }: Props) {
   const canEdit = role === 'owner' || role === 'editor'
   // 只能看的人只有行事曆一頁（畫面乾淨）
   const [tab, setTab] = useState<Tab>(() => (canEdit ? loadTab() : 'calendar'))
+  // 第一次在這台裝置登入：自動播放導覽；之後可以在「設定 → 看導覽」重看
+  const [showTour, setShowTour] = useState(() => !tourSeen())
+
+  function closeTour() {
+    setShowTour(false)
+    try {
+      localStorage.setItem(TOUR_KEY, '1')
+    } catch {
+      // 存不了也沒關係
+    }
+  }
 
   function changeTab(t: Tab) {
     setTab(t)
@@ -96,8 +117,10 @@ export default function HomePage({ displayName, role }: Props) {
         {tab === 'daily' && <DailyPage canEdit={canEdit} />}
         {tab === 'memo' && <MemoPage canEdit={canEdit} />}
         {tab === 'items' && <ItemsPage canEdit={canEdit} />}
-        {tab === 'settings' && <SettingsPage canEdit={canEdit} isPartner={role === 'editor'} />}
+        {tab === 'settings' && <SettingsPage canEdit={canEdit} isPartner={role === 'editor'} onShowTour={() => setShowTour(true)} />}
       </main>
+
+      {showTour && <Tour onClose={closeTour} />}
     </div>
   )
 }
