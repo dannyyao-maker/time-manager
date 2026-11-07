@@ -241,6 +241,29 @@ export default function CalendarPage({ canEdit }: Props) {
     }
   }
 
+  // 手機：在行事曆上左右滑，切到下一個／上一個月（週曆、日曆也一樣）
+  const swipe = useRef<{ x: number; y: number; t: number } | null>(null)
+  const [slide, setSlide] = useState<'' | 'from-right' | 'from-left'>('')
+  function handleTouchStart(e: React.TouchEvent) {
+    const t = e.touches[0]
+    swipe.current = e.touches.length === 1 ? { x: t.clientX, y: t.clientY, t: Date.now() } : null
+  }
+  function handleTouchEnd(e: React.TouchEvent) {
+    const start = swipe.current
+    swipe.current = null
+    if (!start) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - start.x
+    const dy = t.clientY - start.y
+    // 夠長、夠快、而且明顯是橫的（直的是捲動，不算）
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - start.t > 800) return
+    const api = calendarRef.current?.getApi()
+    if (!api) return
+    if (dx < 0) api.next()
+    else api.prev()
+    setSlide(dx < 0 ? 'from-right' : 'from-left')
+  }
+
   function changeMode(m: ViewMode) {
     setMode(m)
     save(MODE_KEY, m)
@@ -337,7 +360,12 @@ export default function CalendarPage({ canEdit }: Props) {
 
       {error && <p className="error">發生錯誤：{error}</p>}
 
-      <div className="calendar-wrap">
+      <div
+        className={['calendar-wrap', slide && `slide-${slide}`].filter(Boolean).join(' ')}
+        onTouchStart={isTouch ? handleTouchStart : undefined}
+        onTouchEnd={isTouch ? handleTouchEnd : undefined}
+        onAnimationEnd={() => setSlide('')}
+      >
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -345,7 +373,8 @@ export default function CalendarPage({ canEdit }: Props) {
           locale={zhTwLocale}
           firstDay={0}
           headerToolbar={{
-            left: 'prev,next today',
+            // 手機用左右滑切換，不放 < > 按鈕
+            left: isTouch ? 'today' : 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,timeGridWeek,timeGridDay',
           }}

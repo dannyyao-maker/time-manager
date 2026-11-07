@@ -25,11 +25,11 @@ describe('三個行事曆各顯示什麼', () => {
     expect([myMeal, herWork, date].map((o) => visibility(o, 'shared', ME))).toEqual(['busy', 'busy', 'full'])
   })
   it('她的：她的顯示成忙碌（宛）、我的不顯示、約會完整', () => {
-    expect([myMeal, herWork, date].map((o) => visibility(o, 'partner', ME))).toEqual(['hidden', 'busy', 'full'])
+    expect([myMeal, herWork, date].map((o) => visibility(o, 'partner', ME))).toEqual(['hidden', 'full', 'full'])
   })
   it('從她的角度看也一樣（我變成對方）', () => {
     expect([myMeal, herWork, date].map((o) => visibility(o, 'mine', HER))).toEqual(['hidden', 'full', 'full'])
-    expect([myMeal, herWork, date].map((o) => visibility(o, 'partner', HER))).toEqual(['busy', 'hidden', 'full'])
+    expect([myMeal, herWork, date].map((o) => visibility(o, 'partner', HER))).toEqual(['full', 'hidden', 'full'])
   })
 })
 

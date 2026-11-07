@@ -1941,3 +1941,14 @@ textarea.tt-input {
     padding-bottom: calc(22px + env(safe-area-inset-bottom));
   }
 }
+
+/* 手機左右滑切換月份：新的月份從滑的方向進來 */
+.calendar-wrap.slide-from-right .fc-view-harness { animation: cal-from-right 0.28s ease-out; }
+.calendar-wrap.slide-from-left .fc-view-harness { animation: cal-from-left 0.28s ease-out; }
+@keyframes cal-from-right { from { transform: translateX(28%); opacity: 0.2; } to { transform: none; opacity: 1; } }
+@keyframes cal-from-left { from { transform: translateX(-28%); opacity: 0.2; } to { transform: none; opacity: 1; } }
+.calendar-wrap { overflow-x: clip; }
+@media (prefers-reduced-motion: reduce) {
+  .calendar-wrap.slide-from-right .fc-view-harness,
+  .calendar-wrap.slide-from-left .fc-view-harness { animation: none; }
+}

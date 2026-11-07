@@ -71,8 +71,8 @@ export default function DaySheet({ date, mode, showFree, categories, members, ca
       )}
       <ul className="sheet-list">
         {ordered.map((occ) => {
-          const others = !isMine(occ, me) && occ.calendar !== 'shared'
-          const badge = others || (mode === 'shared' && occ.calendar !== 'shared')
+          // 只有「共用」把個人行程標成點／宛；「宛的」直接看她的類別
+          const badge = mode === 'shared' && occ.calendar !== 'shared'
             ? memberBadge(members.find((m) => m.user_id === occ.owner_id) ?? (isMine(occ, me) ? members.find((m) => m.user_id === me) : undefined))
             : null
           const color = badge ? badge.color : itemColor(occ, categories)

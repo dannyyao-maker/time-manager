@@ -1,7 +1,7 @@
 // 三個行事曆的顯示規則（第二版）
 //   我的：我的個人行程（完整）＋約會（完整）
 //   共用：我的個人行程顯示成「點」、對方的顯示成「宛」＋約會（完整）
-//   對方的：對方的個人行程顯示成「宛」（點進去看細節）＋約會（完整）
+//   對方的：對方的個人行程完整顯示（只能看，不能改）＋約會（完整）（2026-11-07 改）
 // 資料只有一份，三個行事曆只是不同的看法。
 
 import type { Occurrence } from '../data/types'
@@ -30,7 +30,7 @@ export function visibility(o: Occurrence, mode: ViewMode, me: string | null): Vi
   if (isShared(o)) return 'full'
   const mine = isMine(o, me)
   if (mode === 'mine') return mine ? 'full' : 'hidden'
-  if (mode === 'partner') return mine ? 'hidden' : 'busy'
+  if (mode === 'partner') return mine ? 'hidden' : 'full'
   return 'busy' // 共用：兩個人的個人行程都顯示成忙碌
 }
 

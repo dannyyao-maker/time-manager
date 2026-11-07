@@ -42,9 +42,14 @@ describe('三個行事曆實際顯示的內容', () => {
     expect(dot.editable).toBe(false)
   })
 
-  it('她的：只有「宛」＋約會', () => {
+  it('她的：她的行程完整顯示（不能拖拉）＋約會', () => {
     const ev = buildViewEvents(data, 'partner', ME, members, [])
-    expect(ev.map((e) => e.title).sort()).toEqual(['宛', '約會'])
+    expect(ev.map((e) => e.title).sort()).toEqual(['上班', '約會'])
+    expect(ev.find((e) => e.title === '上班')!.editable).toBe(false)
+  })
+
+  it('共用裡她的行程是粉色「宛」', () => {
+    const ev = buildViewEvents(data, 'shared', ME, members, [])
     expect(ev.find((e) => e.title === '宛')!.borderColor).toBe(EDITOR_COLOR)
   })
 
