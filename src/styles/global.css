@@ -1952,3 +1952,206 @@ textarea.tt-input {
   .calendar-wrap.slide-from-right .fc-view-harness,
   .calendar-wrap.slide-from-left .fc-view-harness { animation: none; }
 }
+
+/* ---------- 行事曆頭貼、切換鈕（2026-11-09） ---------- */
+.avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  object-fit: cover;
+  color: #fff;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cal-chips {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 14px 4px 4px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  background: #efe8e1;
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.cal-chip.active {
+  background: var(--surface);
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.avatar-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.avatar-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.avatar-actions {
+  display: flex;
+  gap: 6px;
+}
+
+@media (max-width: 640px) {
+  /* 行事曆頁：整頁固定在螢幕大小，不會上下晃；月份放最上面，不顯示 Time Manager */
+  :root:has(.calendar-page) body {
+    overscroll-behavior: none;
+  }
+
+  .app:has(.calendar-page) {
+    height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app:has(.calendar-page) .topbar {
+    padding: 0;
+    border: none;
+    min-height: 0;
+  }
+
+  .app:has(.calendar-page) .brand,
+  .app:has(.calendar-page) .user {
+    display: none;
+  }
+
+  .app:has(.calendar-page) .content {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: calc(4px + env(safe-area-inset-top)) 10px calc(82px + env(safe-area-inset-bottom));
+  }
+
+  .calendar-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .m-cal-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 2px 8px;
+  }
+
+  .m-cal-title {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    font-family: var(--font-num);
+    font-size: 1.45rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .m-today {
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 4px 6px;
+  }
+
+  .m-views .seg-btn {
+    padding: 4px 9px;
+    font-size: 0.8rem;
+  }
+
+  .m-settings svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .cal-top {
+    margin-bottom: 6px;
+  }
+
+  .cal-chips {
+    flex: 1;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .cal-chip {
+    gap: 5px;
+    padding: 3px 11px 3px 3px;
+    font-size: 0.82rem;
+  }
+
+  .m-free-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 2px 6px;
+    min-width: 0;
+  }
+
+  .m-free-row .legend-switch {
+    margin-left: 0;
+    flex: none;
+    font-size: 0.78rem;
+  }
+
+  .m-free-days {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+  }
+
+  .m-free-days .upcoming-day {
+    flex: none;
+    padding: 3px 10px;
+    font-size: 0.78rem;
+  }
+
+  .app:has(.calendar-page) .calendar-wrap {
+    flex: 1;
+    min-height: 0;
+    margin: 0 -4px;
+    padding: 4px 2px 2px;
+  }
+
+  .avatar-row {
+    flex-wrap: wrap;
+  }
+}

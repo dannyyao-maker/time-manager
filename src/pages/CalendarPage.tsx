@@ -17,6 +17,11 @@ import { listCategories } from '../data/categories'
 import { updateItem } from '../data/items'
 import { listOccurrences, occurrenceToInput, saveThisOccurrence } from '../data/occurrences'
 import { listMembers, memberBadge, type Member } from '../data/members'
+import { listAvatars, SHARED_AVATAR, type Avatars } from '../data/avatars'
+import { SHARED_COLOR } from '../data/categories'
+import Avatar from '../components/Avatar'
+import TabIcon from '../components/TabIcon'
+import { signOut } from '../hooks/useAuth'
 import { addDays, eventToTiming, itemToInput, selectionToDefaults } from '../lib/calendarEvents'
 import { toISODate, todayISO } from '../lib/dates'
 import { getCurrentUserId } from '../lib/session'
@@ -30,7 +35,7 @@ import OccurrenceEditor, { type EditTarget } from '../components/OccurrenceEdito
 import DaySheet from '../components/DaySheet'
 import BusyDetail from '../components/BusyDetail'
 
-type Props = { canEdit: boolean }
+type Props = { canEdit: boolean; onOpenSettings?: () => void }
 
 const VIEW_KEY = 'tm.calendarView'
 const MODE_KEY = 'tm.calendarMode'
@@ -54,6 +59,16 @@ function save(key: string, value: string) {
   } catch {
     // 存不了也沒關係
   }
+}
+
+// 手機上方的標題：月曆、週曆只寫「2026年11月」（週曆用那週中間那天的月份），日曆寫「11月9日（一）」
+function shortTitle(arg: DatesSetArg): string {
+  const start = arg.view.currentStart
+  if (arg.view.type === 'timeGridDay') {
+    return `${start.getMonth() + 1}月${start.getDate()}日（${'日一二三四五六'[start.getDay()]}）`
+  }
+  const mid = arg.view.type === 'timeGridWeek' ? new Date(start.getTime() + 3 * 86400000) : start
+  return `${mid.getFullYear()}年${mid.getMonth() + 1}月`
 }
 
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e))
@@ -86,7 +101,7 @@ function singleBlock(occ: Occurrence): BusyBlock {
   }
 }
 
-export default function CalendarPage({ canEdit }: Props) {
+export default function CalendarPage({ canEdit, onOpenSettings }: Props) {
   const me = getCurrentUserId()
   const calendarRef = useRef<FullCalendar>(null)
   const [categories, setCategories] = useState<Category[] | null>(null)
@@ -97,6 +112,8 @@ export default function CalendarPage({ canEdit }: Props) {
   const [sheetDate, setSheetDate] = useState<string | null>(null)
   const [detail, setDetail] = useState<BusyBlock | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [title, setTitle] = useState('') // 目前顯示的月份（手機放在畫面最上面）
+  const [avatars, setAvatars] = useState<Avatars>({})
   const [showFree, setShowFree] = useState(() => load(FREE_KEY, ['on', 'off'], 'on') === 'on')
   const [upcoming, setUpcoming] = useState<DayAvailability[] | null>(null)
   const [version, setVersion] = useState(0) // 資料有改動就加一，讓「接下來一週可約」重新算
@@ -119,6 +136,7 @@ export default function CalendarPage({ canEdit }: Props) {
         setMembers(mems)
       })
       .catch((e) => setError(errMsg(e)))
+    listAvatars().then(setAvatars)
   }, [])
 
   const refetch = () => {
@@ -235,6 +253,7 @@ export default function CalendarPage({ canEdit }: Props) {
   }
 
   function handleDatesSet(arg: DatesSetArg) {
+    setTitle(shortTitle(arg))
     if (arg.view.type !== view) {
       setView(arg.view.type)
       save(VIEW_KEY, arg.view.type)
@@ -274,29 +293,99 @@ export default function CalendarPage({ canEdit }: Props) {
   }
 
   const isTimeGrid = view.startsWith('timeGrid')
-  // 手機：月曆填滿畫面（扣掉上方列、行事曆切換和下方分頁列）；電腦：月曆依內容自動長高
-  const height = isNarrow ? 'calc(100dvh - 196px)' : isTimeGrid ? 'calc(100vh - 230px)' : 'auto'
+  // 手機：整頁固定在螢幕大小，月曆填滿剩下的空間（不會上下晃）；電腦：月曆依內容自動長高
+  const height = isNarrow ? '100%' : isTimeGrid ? 'calc(100vh - 230px)' : 'auto'
   const openNew = (date: string) => setEditing({ kind: 'new', defaults: newDefaults(date) })
+  const api = () => calendarRef.current?.getApi()
 
-  const modeButtons: { id: ViewMode; label: string }[] = [
-    { id: 'mine', label: '我的' },
-    { id: 'shared', label: '共用' },
-    ...(partner ? [{ id: 'partner' as const, label: `${partnerName}的` }] : []),
+  const myBadge = memberBadge(members.find((m) => m.user_id === me))
+  const partnerBadge = partner ? memberBadge(partner) : null
+  const modeButtons: { id: ViewMode; label: string; image?: string; letter: string; color: string }[] = [
+    { id: 'mine', label: '我的', image: me ? avatars[me] : undefined, letter: myBadge.label, color: myBadge.color },
+    { id: 'shared', label: '共用', image: avatars[SHARED_AVATAR], letter: '約', color: SHARED_COLOR },
+    ...(partner && partnerBadge
+      ? [{ id: 'partner' as const, label: `${partnerName}的`, image: avatars[partner.user_id], letter: partnerBadge.label, color: partnerBadge.color }]
+      : []),
   ]
+
+  const viewButtons = [
+    { id: 'dayGridMonth', label: '月' },
+    { id: 'timeGridWeek', label: '週' },
+    { id: 'timeGridDay', label: '天' },
+  ]
+
+  const freeSwitch = (
+    <label className="switch legend-switch">
+      <input
+        type="checkbox"
+        checked={showFree}
+        onChange={(e) => {
+          setShowFree(e.target.checked)
+          save(FREE_KEY, e.target.checked ? 'on' : 'off')
+        }}
+      />
+      <span>標出可約</span>
+    </label>
+  )
+
+  const upcomingDays =
+    upcoming &&
+    (upcoming.length === 0 ? (
+      <span className="muted small">沒有空滿 5 小時的日子</span>
+    ) : (
+      upcoming.map((d) => (
+        <button key={d.date} className="upcoming-day" onClick={() => setSheetDate(d.date)} title={slotsText(d)}>
+          <strong>{chipDate(d.date)}</strong>
+          <span>連續 {hoursText(d.longestMinutes)}</span>
+        </button>
+      ))
+    ))
 
   return (
     <section className="calendar-page">
+      {isNarrow && (
+        <div className="m-cal-head">
+          <h1 className="m-cal-title">{title}</h1>
+          <button className="m-today" onClick={() => api()?.today()}>
+            今天
+          </button>
+          <div className="seg seg-small m-views" role="tablist" aria-label="檢視">
+            {viewButtons.map((v) => (
+              <button
+                key={v.id}
+                role="tab"
+                aria-selected={view === v.id}
+                className={view === v.id ? 'seg-btn active' : 'seg-btn'}
+                onClick={() => api()?.changeView(v.id)}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+          {canEdit && onOpenSettings ? (
+            <button className="btn-icon m-settings" onClick={onOpenSettings} aria-label="設定">
+              <TabIcon name="settings" />
+            </button>
+          ) : (
+            <button className="btn-secondary btn-small" onClick={() => signOut()}>
+              登出
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="cal-top">
-        <div className="seg cal-modes" role="tablist" aria-label="行事曆">
+        <div className="cal-chips" role="tablist" aria-label="行事曆">
           {modeButtons.map((b) => (
             <button
               key={b.id}
               role="tab"
               aria-selected={activeMode === b.id}
-              className={activeMode === b.id ? 'seg-btn active' : 'seg-btn'}
+              className={activeMode === b.id ? 'cal-chip active' : 'cal-chip'}
               onClick={() => changeMode(b.id)}
             >
-              {b.label}
+              <Avatar image={b.image} letter={b.letter} color={b.color} size={isNarrow ? 24 : 28} />
+              <span>{b.label}</span>
             </button>
           ))}
         </div>
@@ -307,7 +396,7 @@ export default function CalendarPage({ canEdit }: Props) {
         )}
       </div>
 
-      {activeMode === 'shared' && (
+      {activeMode === 'shared' && !isNarrow && (
         <p className="legend muted small">
           {members
             .filter((m) => m.role !== 'viewer')
@@ -328,33 +417,22 @@ export default function CalendarPage({ canEdit }: Props) {
             <span className="legend-free">可約</span>
             12–22 點連續空 5 小時
           </span>
-          <label className="switch legend-switch">
-            <input
-              type="checkbox"
-              checked={showFree}
-              onChange={(e) => {
-                setShowFree(e.target.checked)
-                save(FREE_KEY, e.target.checked ? 'on' : 'off')
-              }}
-            />
-            <span>標出可約</span>
-          </label>
+          {freeSwitch}
         </p>
       )}
 
-      {activeMode === 'shared' && showFree && upcoming && (
+      {activeMode === 'shared' && !isNarrow && showFree && upcoming && (
         <div className="upcoming">
           <span className="upcoming-title">接下來一週可約</span>
-          {upcoming.length === 0 ? (
-            <span className="muted small">沒有空滿 5 小時的日子</span>
-          ) : (
-            upcoming.map((d) => (
-              <button key={d.date} className="upcoming-day" onClick={() => setSheetDate(d.date)} title={slotsText(d)}>
-                <strong>{chipDate(d.date)}</strong>
-                <span>連續 {hoursText(d.longestMinutes)}</span>
-              </button>
-            ))
-          )}
+          {upcomingDays}
+        </div>
+      )}
+
+      {/* 手機：共用行事曆只用一行放「可約」開關和接下來一週可約的日子 */}
+      {activeMode === 'shared' && isNarrow && (
+        <div className="m-free-row">
+          {freeSwitch}
+          {showFree && upcoming && <div className="m-free-days">{upcomingDays}</div>}
         </div>
       )}
 
@@ -372,12 +450,17 @@ export default function CalendarPage({ canEdit }: Props) {
           initialView={view}
           locale={zhTwLocale}
           firstDay={0}
-          headerToolbar={{
-            // 手機用左右滑切換，不放 < > 按鈕
-            left: isTouch ? 'today' : 'prev,next today',
-            center: 'title',
-            right: 'dayGridMonth,timeGridWeek,timeGridDay',
-          }}
+          // 手機：月份、今天、月／週／天都在上面自己做的標題列；左右滑換月
+          headerToolbar={
+            isNarrow
+              ? false
+              : {
+                  left: isTouch ? 'today' : 'prev,next today',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,timeGridDay',
+                }
+          }
+          moreLinkContent={(arg) => (isNarrow ? `+${arg.num}` : `還有 ${arg.num} 筆`)}
           height={height}
           fixedWeekCount={false}
           // 項目都畫成淡色標籤；月曆只寫標題（時間點進去看）、日期只寫數字

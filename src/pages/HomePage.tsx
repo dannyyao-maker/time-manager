@@ -113,7 +113,7 @@ export default function HomePage({ displayName, role }: Props) {
       </header>
 
       <main className={canEdit ? 'content' : 'content viewer'}>
-        {tab === 'calendar' && <CalendarPage canEdit={canEdit} />}
+        {tab === 'calendar' && <CalendarPage canEdit={canEdit} onOpenSettings={() => changeTab('settings')} />}
         {tab === 'daily' && <DailyPage canEdit={canEdit} />}
         {tab === 'memo' && <MemoPage canEdit={canEdit} />}
         {tab === 'items' && <ItemsPage canEdit={canEdit} />}

@@ -1,7 +1,7 @@
 -- =============================================================
--- 權限（RLS）測試：第二版（個人／共用、女友可編輯、備忘錄）
+-- 權限（RLS）測試：第二版（個人／共用、女友可編輯、備忘錄、行事曆頭貼）
 -- 用途：模擬「沒登入的人」「陌生人」「viewer」「editor（女友）」「owner（你）」，
---       確認每個人只能做被允許的事。需要先執行 migrations 0001～0005。
+--       確認每個人只能做被允許的事。需要先執行 migrations 0001～0006。
 --
 -- 怎麼用：
 --   1. 確認 members 有你（role = owner），而且登入過網站。
@@ -249,6 +249,40 @@ begin
     select count(*) into n from public.memos where id = my_memo;
     r := r || case when n = 0 then '，備忘錄已刪' else '，備忘錄還在' end;
     res := res || jsonb_build_object('no', 28, 'test', 'owner：把備忘錄排到某天', 'expected', '成功，變成待辦，備忘錄已刪', 'actual', r, 'pass', r = '成功，變成待辦，備忘錄已刪');
+
+    -- 行事曆頭貼（0006）
+    perform pg_temp.act_as('authenticated', owner_uid, owner_email);
+    begin insert into public.calendar_avatars (key, image) values (owner_uid::text, 'data:image/jpeg;base64,AAAA'); r := '成功';
+    exception when others then r := '被拒絕'; end;
+    reset role;
+    res := res || jsonb_build_object('no', 29, 'test', 'owner：設定自己的頭貼', 'expected', '成功', 'actual', r, 'pass', r = '成功');
+
+    perform pg_temp.act_as('authenticated', ed, ed_email);
+    select count(*) into n from public.calendar_avatars where key = owner_uid::text;
+    reset role;
+    res := res || jsonb_build_object('no', 30, 'test', 'editor：看得到我的頭貼', 'expected', '1 筆', 'actual', n || ' 筆', 'pass', n = 1);
+
+    perform pg_temp.act_as('authenticated', ed, ed_email);
+    update public.calendar_avatars set image = 'data:image/jpeg;base64,BBBB' where key = owner_uid::text; get diagnostics n = row_count;
+    reset role;
+    res := res || jsonb_build_object('no', 31, 'test', 'editor：改我的頭貼', 'expected', '0 筆被修改', 'actual', n || ' 筆被修改', 'pass', n = 0);
+
+    perform pg_temp.act_as('authenticated', ed, ed_email);
+    begin insert into public.calendar_avatars (key, image) values ('shared', 'data:image/jpeg;base64,CCCC'); r := '成功';
+    exception when others then r := '被拒絕'; end;
+    reset role;
+    res := res || jsonb_build_object('no', 32, 'test', 'editor：設定共用的頭貼', 'expected', '成功', 'actual', r, 'pass', r = '成功');
+
+    perform pg_temp.act_as('authenticated', vw, vw_email);
+    begin insert into public.calendar_avatars (key, image) values (vw::text, 'data:image/jpeg;base64,DDDD'); r := '成功（危險！）';
+    exception when others then r := '被拒絕'; end;
+    reset role;
+    res := res || jsonb_build_object('no', 33, 'test', 'viewer：設定頭貼', 'expected', '被拒絕', 'actual', r, 'pass', r = '被拒絕');
+
+    perform pg_temp.act_as('authenticated', st, st_email);
+    select count(*) into n from public.calendar_avatars;
+    reset role;
+    res := res || jsonb_build_object('no', 34, 'test', '陌生人：讀頭貼', 'expected', '0 筆', 'actual', n || ' 筆', 'pass', n = 0);
 
     -- 撤銷這個區塊裡的所有資料
     raise exception using errcode = 'P0099', message = 'rollback test data';
