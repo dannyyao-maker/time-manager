@@ -31,6 +31,7 @@ A personal calendar + daily to-do web app where events and tasks are the same da
 | 三個行事曆 | 我的／共用／她的：「共用」裡個人行程只顯示名字（點／宛），點進去才看細節；切到對方的行事曆可以看到完整內容，但只能看不能改；「一起」的約會兩人都能改；權限由資料庫擋住，不是只藏按鈕 |
 | 可約 | 共用行事曆標出「可約」的日子：12–22 點兩人都沒安排、連續空滿 5 小時（整天的行程不可約，待辦不算）；上方列出接下來一週最適合約的日子 |
 | 備忘錄 | 先記下來；決定好日期按「排到某天」就變成那天的待辦，備忘錄同時刪掉；只有自己看得到 |
+| iPhone 小工具 | 主畫面顯示「這週的我的行事曆」（週日到週六、每天的色塊）；用免費的 Scriptable App 顯示，設定裡一鍵產生程式和專用密碼 |
 | 使用導覽 | 第一次登入自動播放的動畫導覽（Apple 風格：大標題＋手機畫面放大縮小滑動），之後可在設定重看 |
 | 備份 | 一鍵下載 JSON（完整備份）＋ CSV（Excel 可開） |
 | 手機 | 可加到主畫面當 App（PWA）；行事曆頁固定一頁不會晃、月份在最上面；三個行事曆的切換鈕可以放自己的頭貼；下方分頁列；左右滑切換月份；點日期先看當天清單；新增頁用小月曆和時間滾輪 |
@@ -80,7 +81,7 @@ Supabase
   - 不在成員名單上的人：就算登入，也讀到 0 筆。
   - viewer：可以讀，但新增／修改／刪除一律被資料庫拒絕。
   - owner：只能修改自己的資料。
-- `supabase/tests/rls_test.sql` 模擬沒登入、陌生人、viewer、editor、owner 五種身分，34 項權限測試（例如「女友不能改我的個人行程，但能改共用項目」）。
+- `supabase/tests/rls_test.sql` 模擬沒登入、陌生人、viewer、editor、owner 五種身分，38 項權限測試（例如「女友不能改我的個人行程，但能改共用項目」）。
 - 網站裡的 Supabase「公開金鑰」設計上可以公開：它只能以訪客身分發出請求，每個請求都還要過 RLS。能繞過 RLS 的 secret key 從不出現在網站或 repo。
 - 每次 commit 前自動執行 `scripts/check-secrets.mjs`，擋下 Gmail 地址、金鑰和環境變數檔。
 
@@ -95,7 +96,7 @@ npm run dev                  # 打開 http://localhost:5173
 npm test                     # 執行自動測試
 ```
 
-資料庫：依序在 Supabase SQL Editor 執行 `supabase/migrations/` 裡的 `0001`～`0006`，再用 `supabase/setup/add_member.example.sql` 把自己加進成員名單。
+資料庫：依序在 Supabase SQL Editor 執行 `supabase/migrations/` 裡的 `0001`～`0007`，再用 `supabase/setup/add_member.example.sql` 把自己加進成員名單。
 
 ## 開發過程
 

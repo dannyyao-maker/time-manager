@@ -2155,3 +2155,46 @@ textarea.tt-input {
     flex-wrap: wrap;
   }
 }
+
+/* ---------- 設定：手機小工具 ---------- */
+.widget-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.widget-on {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(52, 168, 107, 0.16);
+  color: #22704a;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.widget-setup {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.widget-steps {
+  margin: 8px 0 4px;
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.widget-code {
+  width: 100%;
+  margin-top: 10px;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  resize: vertical;
+}

@@ -1,7 +1,7 @@
 -- =============================================================
--- 權限（RLS）測試：第二版（個人／共用、女友可編輯、備忘錄、行事曆頭貼）
+-- 權限（RLS）測試：第二版（個人／共用、女友可編輯、備忘錄、行事曆頭貼、手機小工具）
 -- 用途：模擬「沒登入的人」「陌生人」「viewer」「editor（女友）」「owner（你）」，
---       確認每個人只能做被允許的事。需要先執行 migrations 0001～0006。
+--       確認每個人只能做被允許的事。需要先執行 migrations 0001～0007。
 --
 -- 怎麼用：
 --   1. 確認 members 有你（role = owner），而且登入過網站。
@@ -50,6 +50,7 @@ declare
   owner_after uuid;
   my_memo     uuid;
   memo_item   uuid;
+  wtoken      text;
 begin
   select u.id, u.email into owner_uid, owner_email
   from auth.users u
@@ -283,6 +284,35 @@ begin
     select count(*) into n from public.calendar_avatars;
     reset role;
     res := res || jsonb_build_object('no', 34, 'test', '陌生人：讀頭貼', 'expected', '0 筆', 'actual', n || ' 筆', 'pass', n = 0);
+
+    -- 手機小工具（0007）
+    perform pg_temp.act_as('authenticated', st, st_email);
+    begin perform public.create_widget_token(); r := '成功（危險！）';
+    exception when others then r := '被拒絕'; end;
+    reset role;
+    res := res || jsonb_build_object('no', 35, 'test', '陌生人：產生小工具密碼', 'expected', '被拒絕', 'actual', r, 'pass', r = '被拒絕');
+
+    perform pg_temp.act_as('anon', null, null);
+    begin perform * from public.widget_week(repeat('0', 64)); r := '拿到資料（危險！）';
+    exception when others then r := '被拒絕'; end;
+    reset role;
+    res := res || jsonb_build_object('no', 36, 'test', '沒登入＋錯的小工具密碼：讀這週行程', 'expected', '被拒絕', 'actual', r, 'pass', r = '被拒絕');
+
+    perform pg_temp.act_as('authenticated', owner_uid, owner_email);
+    wtoken := public.create_widget_token();
+    reset role;
+    perform pg_temp.act_as('anon', null, null);
+    select string_agg(title, '、' order by title) into r
+    from public.widget_week(wtoken, current_date) where title like 'RLS %';
+    reset role;
+    r := case when r like '%RLS 我的個人%' and r not like '%她的個人%' then '有我的、沒有她的' else coalesce(r, '（沒有）') end;
+    res := res || jsonb_build_object('no', 37, 'test', '小工具：看得到我的個人行程，看不到她的', 'expected', '有我的、沒有她的', 'actual', r, 'pass', r = '有我的、沒有她的');
+
+    perform pg_temp.act_as('anon', null, null);
+    begin perform * from public.widget_tokens; r := '讀得到（危險！）';
+    exception when others then r := '被拒絕'; end;
+    reset role;
+    res := res || jsonb_build_object('no', 38, 'test', '沒登入：直接讀小工具密碼表', 'expected', '被拒絕', 'actual', r, 'pass', r = '被拒絕');
 
     -- 撤銷這個區塊裡的所有資料
     raise exception using errcode = 'P0099', message = 'rollback test data';
