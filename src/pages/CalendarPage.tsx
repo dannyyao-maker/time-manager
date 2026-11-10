@@ -465,6 +465,8 @@ export default function CalendarPage({ canEdit, onOpenSettings }: Props) {
           fixedWeekCount={false}
           // 項目都畫成淡色標籤；月曆只寫標題（時間點進去看）、日期只寫數字
           eventDisplay="block"
+          // 同一天：紀念日 → 行程 → 待辦
+          eventOrder="rank,start,-duration,allDay,title"
           views={{
             dayGridMonth: { displayEventTime: false, dayCellContent: (arg) => arg.date.getDate() },
           }}

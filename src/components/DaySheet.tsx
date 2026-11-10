@@ -5,6 +5,7 @@ import { listOccurrences } from '../data/occurrences'
 import { memberBadge, type Member } from '../data/members'
 import { formatDateLabel, formatTime } from '../lib/dates'
 import { splitDaily } from '../lib/daily'
+import { eventRank } from '../lib/calendarEvents'
 import { dayAvailability, hoursText, slotsText } from '../lib/freeTime'
 import { getCurrentUserId } from '../lib/session'
 import { canEditItem, isMine, visibility, type ViewMode } from '../lib/views'
@@ -37,7 +38,8 @@ export default function DaySheet({ date, mode, showFree, categories, members, ca
 
   const visible = (items ?? []).filter((o) => visibility(o, mode, me) !== 'hidden')
   const sections = splitDaily(visible, date)
-  const ordered = [...sections.allDay, ...sections.timed]
+  // 紀念日 → 整天的行程 → 有時間的行程 → 待辦
+  const ordered = [...sections.allDay, ...sections.timed].sort((a, b) => eventRank(a) - eventRank(b))
   const free = showFree && items ? dayAvailability(items, date) : null
 
   return (

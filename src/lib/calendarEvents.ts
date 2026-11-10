@@ -16,7 +16,14 @@ export type CalendarEvent = {
   borderColor: string
   textColor: string
   classNames: string[]
-  extendedProps: { item: Item }
+  extendedProps: { item: Item; rank: number }
+}
+
+// 同一天的排列順序：紀念日 → 行程 → 待辦（待辦多的時候，才不會把原本的行程擠到下面看不到）
+export function eventRank(item: { is_special?: boolean; is_task?: boolean; start_time: string | null }): number {
+  if (item.is_special) return 0
+  if (item.is_task && !item.start_time) return 2
+  return 1
 }
 
 export function addDays(iso: string, days: number): string {
@@ -38,8 +45,12 @@ export function itemToEvent(item: Item & { key?: string }, categories: Category[
     backgroundColor: tint(color, 0.18),
     borderColor: color,
     textColor: shade(color, 0.28),
-    classNames: [...(item.is_done ? ['is-done'] : []), ...(item.is_task && !item.start_time ? ['is-task'] : [])],
-    extendedProps: { item },
+    classNames: [
+      ...(item.is_done ? ['is-done'] : []),
+      ...(item.is_task && !item.start_time ? ['is-task'] : []),
+      ...(item.is_special ? ['is-special'] : []),
+    ],
+    extendedProps: { item, rank: eventRank(item) },
   }
 
   if (!item.start_time) {

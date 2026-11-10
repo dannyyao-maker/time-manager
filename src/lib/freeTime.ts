@@ -34,6 +34,7 @@ const toMin = (t: string) => {
 // 某一筆項目在某一天佔掉的時間（以那天 0 點起算的分鐘）
 function busyOnDay(o: Occurrence, day: string): [number, number] | null {
   if (day < o.start_date || day > o.end_date) return null
+  if (o.is_special) return null // 紀念日不算行程
   if (!o.start_time) {
     // 待辦不算行程；整天的行程那天整天都算忙
     return o.is_task ? null : [0, 24 * 60]

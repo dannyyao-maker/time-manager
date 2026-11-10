@@ -4,13 +4,27 @@ import { buildOverridePatch, expandItems } from '../lib/recurrence'
 import type { Item, ItemInput, Occurrence, Override } from './types'
 import { setItemDone } from './items'
 
-const ITEM_COLUMNS =
+const BASE_COLUMNS =
   'id, title, start_date, end_date, start_time, end_time, is_done, category_id, note, location, repeat_freq, repeat_until, calendar, owner_id, is_task'
+// 0008 加的紀念日欄位；資料庫還沒更新時自動不讀它，網站照常運作
+let ITEM_COLUMNS = BASE_COLUMNS + ', is_special'
 const OVERRIDE_COLUMNS =
   'id, item_id, occurrence_date, is_cancelled, is_done, title, start_date, end_date, start_time, end_time, note, location'
 
 // [from, to] 這段日期要顯示的每一次（兩端都包含）
 export async function listOccurrences(from: string, to: string): Promise<Occurrence[]> {
+  try {
+    return await queryOccurrences(from, to)
+  } catch (e) {
+    if ((e as { code?: string }).code === '42703' && ITEM_COLUMNS !== BASE_COLUMNS) {
+      ITEM_COLUMNS = BASE_COLUMNS
+      return queryOccurrences(from, to)
+    }
+    throw e
+  }
+}
+
+async function queryOccurrences(from: string, to: string): Promise<Occurrence[]> {
   const [single, repeating] = await Promise.all([
     supabase
       .from('items')
@@ -28,7 +42,7 @@ export async function listOccurrences(from: string, to: string): Promise<Occurre
   if (single.error) throw single.error
   if (repeating.error) throw repeating.error
 
-  const series = repeating.data as Item[]
+  const series = repeating.data as unknown as Item[]
   let overrides: Override[] = []
   if (series.length > 0) {
     const { data, error } = await supabase
@@ -42,7 +56,7 @@ export async function listOccurrences(from: string, to: string): Promise<Occurre
     overrides = data as Override[]
   }
 
-  return expandItems([...(single.data as Item[]), ...series], overrides, from, to)
+  return expandItems([...(single.data as unknown as Item[]), ...series], overrides, from, to)
 }
 
 // 寫入（或更新）某一次的覆寫

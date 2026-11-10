@@ -46,7 +46,7 @@ export function buildViewEvents(
         textColor: shade(badge.color, 0.3),
         classNames: ['is-busy'],
         editable: false,
-        extendedProps: { block, owner },
+        extendedProps: { block, owner, rank: 1 },
       })
     })
   }

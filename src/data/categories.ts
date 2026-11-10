@@ -82,14 +82,20 @@ export const SHARED_LABEL = '約會'
 export const OWNER_COLOR = '#3D8FE0'
 export const EDITOR_COLOR = '#E0577F'
 
-type Colorable = { category_id: string | null; calendar?: 'personal' | 'shared' }
+// 紀念日（在一起 100 天、生日…）：珊瑚橘，當天最上面
+export const SPECIAL_COLOR = '#EE7F6A'
+export const SPECIAL_LABEL = '紀念日'
+
+type Colorable = { category_id: string | null; calendar?: 'personal' | 'shared'; is_special?: boolean }
 
 // 項目的顏色：共用項目用共用色，個人行程看類別
 export function itemColor(item: Colorable, all: Category[]): string {
+  if (item.is_special) return SPECIAL_COLOR
   return item.calendar === 'shared' ? SHARED_COLOR : resolveColor(item.category_id, all)
 }
 
 export function itemLabel(item: Colorable, all: Category[]): string {
+  if (item.is_special) return SPECIAL_LABEL
   return item.calendar === 'shared' ? SHARED_LABEL : categoryLabel(item.category_id, all)
 }
 

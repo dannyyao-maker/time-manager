@@ -30,6 +30,7 @@ A personal calendar + daily to-do web app where events and tasks are the same da
 | 類別 | 10 色標籤；刪除前顯示會一起刪掉幾筆 |
 | 三個行事曆 | 我的／共用／她的：「共用」裡個人行程只顯示名字（點／宛），點進去才看細節；切到對方的行事曆可以看到完整內容，但只能看不能改；「一起」的約會兩人都能改；權限由資料庫擋住，不是只藏按鈕 |
 | 可約 | 共用行事曆標出「可約」的日子：12–22 點兩人都沒安排、連續空滿 5 小時（整天的行程不可約，待辦不算）；上方列出接下來一週最適合約的日子 |
+| 紀念日 | 共用的紀念日（在一起每 100 天、週年、生日）顯示在當天最上面，不影響可約；同一天的順序是紀念日 → 行程 → 待辦 |
 | 備忘錄 | 先記下來；決定好日期按「排到某天」就變成那天的待辦，備忘錄同時刪掉；只有自己看得到 |
 | iPhone 小工具 | 主畫面顯示「這週的我的行事曆」（週日到週六、每天的色塊）；用免費的 Scriptable App 顯示，設定裡一鍵產生程式和專用密碼 |
 | 使用導覽 | 第一次登入自動播放的動畫導覽（Apple 風格：大標題＋手機畫面放大縮小滑動），之後可在設定重看 |
@@ -96,7 +97,7 @@ npm run dev                  # 打開 http://localhost:5173
 npm test                     # 執行自動測試
 ```
 
-資料庫：依序在 Supabase SQL Editor 執行 `supabase/migrations/` 裡的 `0001`～`0007`，再用 `supabase/setup/add_member.example.sql` 把自己加進成員名單。
+資料庫：依序在 Supabase SQL Editor 執行 `supabase/migrations/` 裡的 `0001`～`0008`，再用 `supabase/setup/add_member.example.sql` 把自己加進成員名單。
 
 ## 開發過程
 

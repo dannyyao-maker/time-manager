@@ -2198,3 +2198,9 @@ textarea.tt-input {
   padding: 8px;
   resize: vertical;
 }
+
+/* 紀念日：字粗一點 */
+.calendar-wrap .fc .fc-event.is-special .fc-event-title,
+.calendar-wrap .fc .fc-event.is-special .fc-event-main {
+  font-weight: 800;
+}

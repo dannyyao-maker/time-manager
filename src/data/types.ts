@@ -27,6 +27,7 @@ export type Item = {
   calendar?: CalendarKind // 第二版：個人或共用；舊資料沒有就當作個人
   owner_id?: string // 誰建立的（個人行程的擁有者）
   is_task?: boolean // 待辦（checkbox）：不算行程、不影響可約、對方看不到
+  is_special?: boolean // 紀念日／節日：當天最上面，不影響可約（0008）
 }
 
 // personal = 個人行程（只有擁有者能改）；shared = 共用（兩人都能改、不分類）
