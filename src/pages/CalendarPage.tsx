@@ -439,7 +439,7 @@ export default function CalendarPage({ canEdit, onOpenSettings }: Props) {
       {error && <p className="error">發生錯誤：{error}</p>}
 
       <div
-        className={['calendar-wrap', slide && `slide-${slide}`].filter(Boolean).join(' ')}
+        className={['calendar-wrap', view === 'dayGridMonth' && 'is-month', slide && `slide-${slide}`].filter(Boolean).join(' ')}
         onTouchStart={isTouch ? handleTouchStart : undefined}
         onTouchEnd={isTouch ? handleTouchEnd : undefined}
         onAnimationEnd={() => setSlide('')}

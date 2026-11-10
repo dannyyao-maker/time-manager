@@ -12,6 +12,11 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   })
 }
 
+// 像 App 一樣：不能用兩指放大縮小（iPhone 的 Safari 會忽略 viewport 設定，所以另外擋）
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

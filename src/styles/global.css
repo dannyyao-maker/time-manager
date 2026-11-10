@@ -2204,3 +2204,35 @@ textarea.tt-input {
 .calendar-wrap .fc .fc-event.is-special .fc-event-main {
   font-weight: 800;
 }
+
+/* ---------- 像 App 一樣（2026-11-11） ---------- */
+/* 全部頁面：只能上下左右捲動，不能兩指放大、也不會點兩下就放大 */
+html {
+  touch-action: pan-x pan-y;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 640px) {
+  /* 行事曆頁：整個畫面釘住，拉不動、也不會回彈 */
+  html:has(.calendar-page),
+  html:has(.calendar-page) body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .app:has(.calendar-page) {
+    position: fixed;
+    inset: 0;
+  }
+
+  /* 月曆：完全不能上下拖，只用左右滑換月（滑動是程式自己判斷的）；週曆、日曆還是可以上下捲看時間 */
+  .calendar-wrap.is-month {
+    touch-action: none;
+  }
+
+  .calendar-wrap.is-month .fc-scroller {
+    overflow: hidden !important;
+  }
+}
